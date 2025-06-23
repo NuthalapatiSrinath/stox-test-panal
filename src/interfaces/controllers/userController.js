@@ -1,11 +1,10 @@
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import users from '../../infrastructure/db/models/userModel.js';
-import { sendOtp, verifyStoredOtp } from '../services/otpService.js';
-
+import {transporter, generateOtp, verifyStoredOtp,sendOtpEmail} from '../services/otpService.js';
 import { sendSuccess, sendError } from '../middlewares/responseHandler.js';
 import { Op } from 'sequelize';
-
+import {generateToken}  from '../../utils/jwt.js';
 // @desc Register user and send OTP
 export const registerUser = async (req, res) => {
   try {
@@ -39,13 +38,59 @@ export const registerUser = async (req, res) => {
       createdAt: new Date()
     });
 
-    await sendOtp(newUser.userId, newUser.mobileNumber, 'email_verification');
+    // await sendOtp(newUser.userId, newUser.mobileNumber, 'email_verification');
     return sendSuccess(res, newUser, 'User registered successfully');
   } catch (error) {
     return sendError(res, error);
   }
 };
-
+//@desc Login 
+export const loginWithPassword= async (req,res)=>{
+  try{
+    const {emailId,password} = req.body;
+    const user = await users.findOne({emailId});
+    if(!user || !await bcrypt.compare(password, user.password) ){
+      return res.status(401).json({message:"No user Exists"});
+    }
+    if(user.isBlocked===true){
+      return res.status(402).json({message:"Your account is Blocked"});
+    }
+    user.lastLoginAt = new Date();
+    user.loginAttempts = 0+1;
+    await user.save();
+    const token = generateToken({
+      userId: user.userId,
+      role: user.role,
+      email: user.emailId,
+    });
+    res.status(200).json({ message: 'Login successful', userId: user.userId,token });
+  }catch(err){
+     res.status(500).json({ error: err.message });
+  }
+}
+//@desc Send Otp
+export const sendOtp = async(req,res)=>{
+    try{
+      const {emailId,type} =  req.body;
+      const user = await users.findOne({emailId});
+      if(!user){
+        return res.status(401).json({meesage:"User not found"});
+      }
+    const otp = await generateOtp();
+    const hashOtp = await bcrypt.hash(otp,10);
+    console.log(otp);
+    user.otpCode = hashOtp;
+    user.otpType = type;
+    user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    user.otpLastSentAt = new Date();
+    user.otpAttemptCount = 0;
+    await user.save();
+    await sendOtpEmail(emailId, otp);
+    res.status(200).json({ message: 'OTP sent to email' });
+    }catch(err){
+      res.status(500).json({ message: 'Internal server error' });
+    }
+}
 // @desc Verify OTP
 export const verifyOtp = async (req, res) => {
   try {
