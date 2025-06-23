@@ -1,17 +1,11 @@
 // responseHandler.js
 
-export const sendSuccess = (res, data, message = 'Success', statusCode = 200) => {
-  return res.status(statusCode).json({
-    success: true,
-    message,
-    data,
+export const sendResponse = (res, statusCode, message, data, errors) => {
+  res.status(statusCode).json({
+    success: statusCode >= 200 && statusCode < 300,
+    message: message || 'Request was successful',
+    data: data || null,
+    errors: errors || null,
   });
 };
 
-export const sendError = (res, error, statusCode = 500) => {
-  return res.status(statusCode).json({
-    success: false,
-    message: error.message || 'Something went wrong',
-    error,
-  });
-};

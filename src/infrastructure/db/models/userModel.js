@@ -58,10 +58,11 @@ const UserSchema = new Schema({
 }, { timestamps: true });
 
 UserSchema.index({ emailId: 1 }, { unique: true });
-UserSchema.index({ phone: 1 }, { unique: true });
+UserSchema.index({ mobileNumber: 1 }, { unique: true, sparse: true }); 
 UserSchema.index({ otpExpiresAt: 1 }, { expireAfterSeconds: 0 });
 UserSchema.index({ userId: 1 });
 UserSchema.index({ role: 1, isActive: 1 });
+
 
 
 export default mongoose.model('User', UserSchema); // ✅ ESM-compatible
