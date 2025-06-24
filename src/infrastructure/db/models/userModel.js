@@ -2,7 +2,7 @@ import mongoose, { model } from "mongoose";
 
 const { Schema } = mongoose;
 import { v4 as uuidv4 } from "uuid";
-
+import { DocumentTypeEnum } from "../../../domain/constants/enums.js";
 const UserSchema = new Schema(
   {
     userId: { type: String, default: uuidv4 },
@@ -35,7 +35,7 @@ const UserSchema = new Schema(
     fullName: { type: String },
     dateOfBirth: { type: Date },
     gender: { type: String },
-    documentType: { type: String, enum: ["aadhaar", "pan", "passport"] },
+    documentType: { type: String, enum:Object.values(DocumentTypeEnum)},
     documentNumber: { type: String },
     documentImageUrl: { type: String },
     kycVerifiedAt: { type: Date },
