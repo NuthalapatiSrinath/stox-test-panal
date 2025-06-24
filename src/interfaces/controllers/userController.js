@@ -11,18 +11,13 @@ import { Op } from "sequelize";
 import { HttpResponse } from "../../utils/responses.js";
 import { generateToken, verifyTokenFromRequest } from "../middlewares/auth.js";
 import { loggerMonitor } from "../../utils/logger.js";
-import { validateUtils } from "../../utils/validators.js";
+
 // @desc Register user and send OTP
 export const registerUser = async (req, res) => {
   try {
     const { username, emailId, mobileNumber, password } = req.body;
-    if (!validateUtils.isEmail(emailId)) {
-      return sendResponse(res,HttpResponse.INVALID_MAIL_ADDRESS.code,HttpResponse.INVALID_MAIL_ADDRESS.message)
-    }
-    if (!validateUtils.isStrongPassword(password)) {
-      return sendResponse(res,HttpResponse.WEAK_PASSWORD.code,HttpResponse.WEAK_PASSWORD.message)
-    }
     if (!username || !emailId || !mobileNumber || !password) {
+      loggerMonitor.error(HttpResponse.BAD_REQUEST.message,HttpResponse.BAD_REQUEST.code)
       return sendResponse(
         res,
         HttpResponse.BAD_REQUEST.code,
@@ -49,6 +44,7 @@ export const registerUser = async (req, res) => {
       password: passwordHash,
       mobileNumber,
     });
+    loggerMonitor.info(HttpResponse.OK.code, HttpResponse.OK.message);
     // await sendOtp(newUser.userId, newUser.mobileNumber, 'email_verification');
     return sendResponse(
       res,
@@ -57,6 +53,7 @@ export const registerUser = async (req, res) => {
       newUser
     );
   } catch (error) {
+    loggerMonitor.error(HttpResponse.INTERNAL_SERVER_ERROR.message,HttpResponse.INTERNAL_SERVER_ERROR.code)
     return sendResponse(
       res,
       HttpResponse.INTERNAL_SERVER_ERROR.code,
@@ -68,8 +65,10 @@ export const registerUser = async (req, res) => {
 //@desc Login
 export const loginWithPassword = async (req, res) => {
   try {
+    const { emailId, password } = req.body;
     const user = await users.findOne({ emailId });
     if (!user || !(await bcrypt.compare(password, user.password))) {
+      loggerMonitor.error(res,HttpResponse.BAD_REQUEST.message,HttpResponse.BAD_REQUEST.code)
       return sendResponse(
         res,
         HttpResponse.BAD_REQUEST.code,
@@ -101,6 +100,7 @@ export const loginWithPassword = async (req, res) => {
       token
     );
   } catch (err) {
+    loggerMonitor.error(HttpResponse.INTERNAL_SERVER_ERROR.code, HttpResponse.INTERNAL_SERVER_ERROR.message);
     return sendResponse(
       res,
       HttpResponse.INTERNAL_SERVER_ERROR.code,
@@ -112,9 +112,6 @@ export const loginWithPassword = async (req, res) => {
 export const sendOtp = async (req, res) => {
   try {
     const { emailId, type } = req.body;
-     if (!validateUtils.isEmail(emailId)) {
-      return sendResponse(res,HttpResponse.INVALID_MAIL_ADDRESS.code,HttpResponse.INVALID_MAIL_ADDRESS.message)
-    }
     const user = await users.findOne({ emailId });
     if (!user) {
       return sendResponse(
