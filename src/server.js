@@ -1,10 +1,10 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import cors from 'cors';
-import connectDB from './infrastructure/db/connection.js';
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+import connectDB from "./infrastructure/db/connection.js";
 
-import userRoutes from './interfaces/routes/userRoutes.js';
-import ngrok from '@ngrok/ngrok'
+import userRoutes from "./interfaces/routes/userRoutes.js";
+import ngrok from "@ngrok/ngrok";
 dotenv.config();
 
 const app = express();
@@ -15,10 +15,11 @@ app.use(express.json());
 connectDB();
 
 // Routes
-app.use('/api/users', userRoutes);
+app.use("/api/users", userRoutes);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log('Node.js web server at 8080 is running...'));
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => console.log("Node.js web server at 8080 is running..."));
 
-ngrok.connect({ addr: 8080, authtoken_from_env: true }).then(listener => console.log(`Ingress established at: ${listener.url()}`));
-
+ngrok
+  .connect({ addr: 8080, authtoken_from_env: true })
+  .then((listener) => console.log(`Ingress established at: ${listener.url()}`));

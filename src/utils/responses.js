@@ -5,6 +5,8 @@ export const HttpResponse = {
   NO_CONTENT: { code: 204, message: 'No Content' },
 
   BAD_REQUEST: { code: 400, message: 'Bad Request' },
+  INVALID_MAIL_ADDRESS:{code:405,message:"Invalid Email Address"},
+  WEAK_PASSWORD:{code:406,message:"Weak Password Please Choose Strong Password"},
   UNAUTHORIZED: { code: 401, message: 'Unauthorized' },
   FORBIDDEN: { code: 403, message: 'Forbidden' },
   NOT_FOUND: { code: 404, message: 'Not Found' },
