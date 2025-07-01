@@ -1,39 +1,42 @@
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 import users from "../../infrastructure/db/models/userModel.js";
-import {
-  generateOtp,
-  verifyStoredOtp,
-  sendOtpEmail,
-} from "../services/otpService.js";
+import { generateOtp, sendOtpEmail } from "../services/otpService.js";
 import { sendResponse } from "../middlewares/responseHandler.js";
-import { Op } from "sequelize";
 import { HttpResponse } from "../../utils/responses.js";
 import { generateToken, verifyTokenFromRequest } from "../middlewares/auth.js";
 import { loggerMonitor } from "../../utils/logger.js";
-
 // @desc Register user and send OTP
 export const registerUser = async (req, res) => {
   try {
     const { username, emailId, mobileNumber, password } = req.body;
     if (!username || !emailId || !mobileNumber || !password) {
-      loggerMonitor.error(HttpResponse.BAD_REQUEST.message,HttpResponse.BAD_REQUEST.code)
+      loggerMonitor.error(
+        HttpResponse.ALL_FIELDS_REQUIRED.message,
+        HttpResponse.ALL_FIELDS_REQUIRED.code
+      );
       return sendResponse(
         res,
         HttpResponse.BAD_REQUEST.code,
-        HttpResponse.BAD_REQUEST.message
+        HttpResponse.BAD_REQUEST.message,
+        null,
+        false
       );
     }
     const existingUser = await users.findOne({
-      where: {
-        [Op.or]: [{ emailId }, { username }, { mobileNumber }],
-      },
+      $or: [
+        { emailId: emailId },
+        { username: username },
+        { mobileNumber: mobileNumber },
+      ],
     });
     if (existingUser) {
       return sendResponse(
         res,
         HttpResponse.ALREADY_EXISTS.code,
-        HttpResponse.ALREADY_EXISTS.message
+        HttpResponse.ALREADY_EXISTS.message,
+        null,
+        false
       );
     }
     const passwordHash = await bcrypt.hash(password, 10);
@@ -50,15 +53,20 @@ export const registerUser = async (req, res) => {
       res,
       HttpResponse.OK.code,
       HttpResponse.OK.message,
-      newUser
+      newUser,
+      true
     );
   } catch (error) {
-    loggerMonitor.error(HttpResponse.INTERNAL_SERVER_ERROR.message,HttpResponse.INTERNAL_SERVER_ERROR.code)
+    loggerMonitor.error(
+      HttpResponse.INTERNAL_SERVER_ERROR.message,
+      HttpResponse.INTERNAL_SERVER_ERROR.code
+    );
     return sendResponse(
       res,
       HttpResponse.INTERNAL_SERVER_ERROR.code,
       HttpResponse.INTERNAL_SERVER_ERROR.message,
-      error.message
+      null,
+      false
     );
   }
 };
@@ -66,13 +74,37 @@ export const registerUser = async (req, res) => {
 export const loginWithPassword = async (req, res) => {
   try {
     const { emailId, password } = req.body;
-    const user = await users.findOne({ emailId });
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      loggerMonitor.error(res,HttpResponse.BAD_REQUEST.message,HttpResponse.BAD_REQUEST.code)
-      return sendResponse(
+    if ((!emailId, !password)) {
+      sendResponse(
         res,
         HttpResponse.BAD_REQUEST.code,
-        HttpResponse.BAD_REQUEST.message
+        HttpResponse.BAD_REQUEST.message,
+        null,
+        false
+      );
+    }
+    const user = await users.findOne({ emailId });
+    if (!user) {
+      loggerMonitor.error(
+        res,
+        HttpResponse.BAD_REQUEST.message,
+        HttpResponse.BAD_REQUEST.code
+      );
+      return sendResponse(
+        res,
+        HttpResponse.NOT_FOUND.code,
+        HttpResponse.NOT_FOUND.message,
+        null,
+        false
+      );
+    }
+    if (!(await bcrypt.compare(password, user.password))) {
+      sendResponse(
+        res,
+        HttpResponse.WRONG_PASSWORD.code,
+        HttpResponse.WRONG_PASSWORD.message,
+        null,
+        false
       );
     }
     user.loginAttempts += 1;
@@ -81,7 +113,9 @@ export const loginWithPassword = async (req, res) => {
       return sendResponse(
         res,
         HttpResponse.UNAUTHORIZED.code,
-        HttpResponse.UNAUTHORIZED.message
+        HttpResponse.UNAUTHORIZED.message,
+        null,
+        false
       );
     }
     user.lastLoginAt = new Date();
@@ -97,14 +131,21 @@ export const loginWithPassword = async (req, res) => {
       res,
       HttpResponse.OK.code,
       HttpResponse.OK.message,
-      token
+      token,
+      true
     );
   } catch (err) {
-    loggerMonitor.error(HttpResponse.INTERNAL_SERVER_ERROR.code, HttpResponse.INTERNAL_SERVER_ERROR.message);
+    loggerMonitor.error(
+      HttpResponse.INTERNAL_SERVER_ERROR.code,
+      HttpResponse.INTERNAL_SERVER_ERROR.message
+    );
     return sendResponse(
       res,
       HttpResponse.INTERNAL_SERVER_ERROR.code,
-      HttpResponse.INTERNAL_SERVER_ERROR.message
+      HttpResponse.INTERNAL_SERVER_ERROR.message,
+      null,
+      false,
+      err
     );
   }
 };
@@ -125,14 +166,20 @@ export const sendOtp = async (req, res) => {
     console.log(otp);
     user.otpCode = hashOtp;
     user.otpType = type;
-    user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    user.otpExpiresAt = new Date(Date.now() + 1 * 60 * 1000);
     user.otpLastSentAt = new Date();
     user.otpAttemptCount = 0;
     await sendOtpEmail(emailId, otp);
     await user.save();
-    logger.log("info", HttpResponse.OK.code, HttpResponse.OK.message);
+    loggerMonitor.log("info", HttpResponse.OK.code, HttpResponse.OK.message);
     return sendResponse(res, HttpResponse.OK.code, HttpResponse.OK.message);
   } catch (err) {
+    loggerMonitor.error(
+      "info",
+      HttpResponse.INTERNAL_SERVER_ERROR.code,
+      HttpResponse.INTERNAL_SERVER_ERROR.message
+    );
+    console.log(err);
     return sendResponse(
       res,
       HttpResponse.INTERNAL_SERVER_ERROR.code,
@@ -143,37 +190,94 @@ export const sendOtp = async (req, res) => {
 // @desc Verify OTP
 export const verifyOtp = async (req, res) => {
   try {
-    const { userId, otp } = req.body;
+    const { emailId, otp } = req.body;
 
-    if (!userId || !otp) {
-      return res.status(400).json({ message: "User ID and OTP are required" });
+    const user = await users.findOne({ emailId });
+    if (!user) {
+      loggerMonitor.error(
+        res,
+        HttpResponse.BAD_REQUEST.message,
+        HttpResponse.BAD_REQUEST.code
+      );
+      return sendResponse(
+        res,
+        HttpResponse.NOT_FOUND.code,
+        HttpResponse.NOT_FOUND.message
+      );
     }
+    if (user.otpAttemptCount >= 5) {
+      return sendResponse(
+        res,
+        HttpResponse.FORBIDDEN.code,
+        "Too many failed attempts. Please request a new OTP.",
+        null,
+        false
+      );
+    }
+    if (user.otpExpiresAt < new Date()) {
+      loggerMonitor.error(
+        res,
+        HttpResponse.BAD_REQUEST.message,
+        HttpResponse.BAD_REQUEST.code
+      );
+      return sendResponse(
+        res,
+        HttpResponse.BAD_REQUEST.code,
+        "OTP has expired"
+      );
+    }
+    if (!user.otpCode || !user.otpExpiresAt) {
+      return sendResponse(
+        res,
+        HttpResponse.BAD_REQUEST.code,
+        "No OTP request found. Please request a new OTP.",
+        null,
+        false
+      );
+    }
+    const isMatch = await bcrypt.compare(otp, user.otpCode);
+    if (!isMatch) {
+      user.otpAttemptCount += 1;
+      await user.save();
+      loggerMonitor.error(
+        res,
+        HttpResponse.UNAUTHORIZED.message,
+        HttpResponse.UNAUTHORIZED.code
+      );
+      return sendResponse(res, HttpResponse.UNAUTHORIZED.code, "Invalid OTP");
+    }
+    user.otpCode = undefined;
 
-    const user = await User.findOne({ userId });
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    const isValid = await verifyStoredOtp(
-      user.userId,
-      otp,
-      "email_verification"
-    );
-    if (!isValid)
-      return res.status(400).json({ message: "Invalid or expired OTP" });
-
+    user.otpExpiresAt = undefined;
+    user.otpAttemptCount = 0;
     user.isVerified = true;
     await user.save();
-
-    return res.status(200).json({ message: "OTP verified successfully" });
+    const token = generateToken({
+      userId: user.userId,
+      role: user.role,
+      email: user.emailId,
+    });
+    return sendResponse(
+      res,
+      HttpResponse.OK.code,
+      "OTP verified successfully",
+      token
+    );
   } catch (err) {
-    console.error("OTP verification error:", err);
-    return res.status(500).json({ message: "Internal Server Error" });
+    console.log(err);
+
+    return sendResponse(
+      res,
+      HttpResponse.INTERNAL_SERVER_ERROR.code,
+      HttpResponse.INTERNAL_SERVER_ERROR.message
+    );
   }
 };
+
 export const getUserByToken = async (req, res) => {
   try {
     const decoded = verifyTokenFromRequest(req);
     const { userId } = decoded;
-
     const user = await users
       .findOne({ userId })
       .select(
@@ -199,35 +303,8 @@ export const getUserByToken = async (req, res) => {
     return sendResponse(
       res,
       HttpResponse.INTERNAL_SERVER_ERROR.code,
-      HttpResponse.INTERNAL_SERVER_ERROR.message
+      HttpResponse.INTERNAL_SERVER_ERROR.message,
+      err.message
     );
-  }
-};
-// @desc Submit KYC details
-export const submitKyc = async (req, res) => {
-  try {
-    const {
-      userId,
-      fullName,
-      dateOfBirth,
-      documentType,
-      documentNumber,
-      documentImageUrl,
-    } = req.body;
-
-    const user = await users.findByPk(userId);
-    if (!user) return sendError(res, { message: "User not found" }, 404);
-
-    user.fullName = fullName;
-    user.dateOfBirth = dateOfBirth;
-    user.documentType = documentType;
-    user.documentNumber = documentNumber;
-    user.documentImageUrl = documentImageUrl;
-    user.kycStatus = "pending";
-    await user.save();
-
-    return sendSuccess(res, user, "KYC submitted successfully");
-  } catch (error) {
-    return sendError(res, error);
   }
 };

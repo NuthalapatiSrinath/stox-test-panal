@@ -5,7 +5,7 @@ export const generateToken = (
 ) => {
   return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn });
 };
-export const verifyTokenFromRequest = (req) => {
+export const verifyTokenFromRequest = (req) => { 
   const authHeader = req.headers["authorization"];
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     throw new Error("Token missing");

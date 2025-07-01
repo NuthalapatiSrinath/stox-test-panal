@@ -33,12 +33,13 @@ const UserSchema = new Schema(
 
     // KYC Fields
     fullName: { type: String },
-    dateOfBirth: { type: Date },
+    dateOfBirth: { type:String },
     gender: { type: String },
     documentType: { type: String, enum:Object.values(DocumentTypeEnum)},
     documentNumber: { type: String },
     documentImageUrl: { type: String },
     kycVerifiedAt: { type: Date },
+    kycRejectionReason:{type:String},
 
     // Device & Login Info
     lastLoginAt: { type: Date },
