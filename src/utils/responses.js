@@ -6,12 +6,14 @@ export const HttpResponse = {
 
   BAD_REQUEST: { code: 400, message: 'Bad Request' },
   INVALID_MAIL_ADDRESS:{code:405,message:"Invalid Email Address"},
+  INVALID_KYC_STATUS:{code:407,message:'Invalid KYC status'},
+  REJECTION_REASON_REQUIRED:{code:408,message:'Rejection Reason is Required'},
   WEAK_PASSWORD:{code:406,message:"Weak Password Please Choose Strong Password"},
-  UNAUTHORIZED: { code: 401, message: 'Unauthorized' },
+  UNAUTHORIZED: { code: 401, message: 'Unauthorized' ,message_2: "User ID mismatch with token",message_3:'Your account is blocked'},
   WRONG_PASSWORD:{code:402,message:'Please Enter Correct Password'},
   FORBIDDEN: { code: 403, message: 'Forbidden' },
   NOT_FOUND: { code: 404, message: 'User Not Found' },
-  ALREADY_EXISTS: { code: 409, message: 'Already Exists' },
+  ALREADY_EXISTS: { code: 409, message: 'User Already Exists' },
   UNPROCESSABLE_ENTITY: { code: 422, message: 'Unprocessable Entity' },
   
   INTERNAL_SERVER_ERROR: { code: 500, message: 'Internal Server Error' },

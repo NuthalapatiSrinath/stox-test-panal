@@ -1,4 +1,4 @@
-export const kycStatus = {
+export const KYC_STATUS = {
   PENDING: 'pending',
   APPROVED: 'approved',
   REJECTED: 'rejected',

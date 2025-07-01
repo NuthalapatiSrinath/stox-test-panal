@@ -6,7 +6,7 @@ import { sendResponse } from "../middlewares/responseHandler.js";
 import { HttpResponse } from "../../utils/responses.js";
 import { generateToken, verifyTokenFromRequest } from "../middlewares/auth.js";
 import { loggerMonitor } from "../../utils/logger.js";
-// @desc Register user and send OTP
+
 export const registerUser = async (req, res) => {
   try {
     const { username, emailId, mobileNumber, password } = req.body;
@@ -70,7 +70,6 @@ export const registerUser = async (req, res) => {
     );
   }
 };
-//@desc Login
 export const loginWithPassword = async (req, res) => {
   try {
     const { emailId, password } = req.body;
@@ -113,18 +112,19 @@ export const loginWithPassword = async (req, res) => {
       return sendResponse(
         res,
         HttpResponse.UNAUTHORIZED.code,
-        HttpResponse.UNAUTHORIZED.message,
+        HttpResponse.UNAUTHORIZED.message_3,
         null,
         false
       );
     }
     user.lastLoginAt = new Date();
     user.loginAttempts = 0;
+    user.isVerified= true;
     await user.save();
     const token = generateToken({
       userId: user.userId,
       role: user.role,
-      email: user.emailId,
+      email: user.emailId
     });
     loggerMonitor.info(HttpResponse.OK.code, HttpResponse.OK.message);
     return sendResponse(
@@ -149,7 +149,6 @@ export const loginWithPassword = async (req, res) => {
     );
   }
 };
-//@desc Send Otp
 export const sendOtp = async (req, res) => {
   try {
     const { emailId, type } = req.body;
@@ -166,7 +165,7 @@ export const sendOtp = async (req, res) => {
     console.log(otp);
     user.otpCode = hashOtp;
     user.otpType = type;
-    user.otpExpiresAt = new Date(Date.now() + 1 * 60 * 1000);
+    user.otpExpiresAt = new Date(Date.now() + 3* 60 * 1000);
     user.otpLastSentAt = new Date();
     user.otpAttemptCount = 0;
     await sendOtpEmail(emailId, otp);
@@ -187,7 +186,6 @@ export const sendOtp = async (req, res) => {
     );
   }
 };
-// @desc Verify OTP
 export const verifyOtp = async (req, res) => {
   try {
     const { emailId, otp } = req.body;
@@ -235,6 +233,15 @@ export const verifyOtp = async (req, res) => {
         false
       );
     }
+      if (user.isBlocked === true) {
+      return sendResponse(
+        res,
+        HttpResponse.UNAUTHORIZED.code,
+        HttpResponse.UNAUTHORIZED.message_3,
+        null,
+        false
+      );
+    }
     const isMatch = await bcrypt.compare(otp, user.otpCode);
     if (!isMatch) {
       user.otpAttemptCount += 1;
@@ -273,7 +280,6 @@ export const verifyOtp = async (req, res) => {
     );
   }
 };
-
 export const getUserByToken = async (req, res) => {
   try {
     const decoded = verifyTokenFromRequest(req);
@@ -281,7 +287,7 @@ export const getUserByToken = async (req, res) => {
     const user = await users
       .findOne({ userId })
       .select(
-        "-password -otpCode -otpExpiresAt -otpAttemptCount -otpLastSentAt -documentImageUrl"
+        "-password -otpCode -otpExpiresAt -otpAttemptCount -otpLastSentAt -documentImageUrl "
       );
 
     if (!user) {
@@ -299,7 +305,7 @@ export const getUserByToken = async (req, res) => {
       user
     );
   } catch (err) {
-    console.error("Token verify failed:", err.message);
+    console.error(err.message);
     return sendResponse(
       res,
       HttpResponse.INTERNAL_SERVER_ERROR.code,

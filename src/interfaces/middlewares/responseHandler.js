@@ -9,13 +9,11 @@ export const sendResponse = (
   if (typeof success === 'undefined') {
     success = statusCode >= 200 && statusCode < 300;
   }
-
   return res.status(statusCode).json({
     success,
     statusCode,
     message,
-    data,
-    errors,
+    data
   });
 };
 

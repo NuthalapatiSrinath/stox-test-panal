@@ -4,6 +4,8 @@ import { sendResponse } from "../middlewares/responseHandler.js";
 import { HttpResponse } from "../../utils/responses.js";
 import { loggerMonitor } from "../../utils/logger.js";
 import { upload } from "../../application/services/s3Upload.js";
+import { extractPanFromTextract } from "../../application/services/extractText.js";
+import { KYC_STATUS } from "../../utils/enum.js";
 export const updateKycInfo = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -24,7 +26,7 @@ export const updateKycInfo = async (req, res) => {
       return sendResponse(
         res,
         HttpResponse.UNAUTHORIZED.code,
-        "User ID mismatch with token",
+        HttpResponse.UNAUTHORIZED.message_2,
         null,
         false
       );
@@ -96,7 +98,7 @@ export const updateKycInfo = async (req, res) => {
     loggerMonitor.log("info", HttpResponse.OK.code, HttpResponse.OK.message);
     return sendResponse(res, HttpResponse.OK.code, HttpResponse.OK.message,updatedUser);
   } catch (error) {
-    console.error("Error updating KYC info:", error);
+    console.error(error);
     loggerMonitor.error(
       "info",
       HttpResponse.INTERNAL_SERVER_ERROR.code,
@@ -124,7 +126,7 @@ export const uploadDocumentUrl = (req, res) => {
         return sendResponse(
           res,
           HttpResponse.UNAUTHORIZED.code,
-          "User ID mismatch with token",
+          HttpResponse.UNAUTHORIZED.message_2,
           null,
           false
         );
@@ -137,6 +139,7 @@ export const uploadDocumentUrl = (req, res) => {
         );
       }
       const documentImageUrl = req.file.location;
+      console.log(documentImageUrl)
       const updatedKyc = await User.findOneAndUpdate(
         { userId },
         { documentImageUrl: documentImageUrl },
@@ -179,7 +182,7 @@ export const getPendingKycUsers = async (req, res) => {
       pendingUsers
     );
   } catch (error) {
-    console.error("Error updating KYC info:", error);
+    console.error(error);
     loggerMonitor.error(
       "info",
       HttpResponse.INTERNAL_SERVER_ERROR.code,
@@ -192,3 +195,43 @@ export const getPendingKycUsers = async (req, res) => {
     );
   }
 };
+export const extractPanController = async (req, res) => {
+  try {
+    if (!req.file || !req.file.bucket || !req.file.key) {
+      return sendResponse(res,HttpResponse.BAD_REQUEST.code,HttpResponse.BAD_REQUEST.message)
+    }
+    const { bucket, key } = req.file;
+    const result = await extractPanFromTextract(bucket, key);
+    return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,result)
+  } catch (error) {
+    console.error(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,error.message)
+  }
+};
+export const updateKycStatus = async(req,res)=>{
+  try{
+  const {userId,kycStatus,kycRejectionReason} = req.body;
+  if (!userId || !kycStatus) {
+    return sendResponse(res,HttpResponse.ALL_FIELDS_REQUIRED.code,HttpResponse.ALL_FIELDS_REQUIRED.message);
+  }
+  const allowStatuses = Object.values(KYC_STATUS);
+  if(!allowStatuses.includes(kycStatus)){
+    return sendResponse(res,HttpResponse.INVALID_KYC_STATUS.code,HttpResponse.INVALID_KYC_STATUS.message);
+  }
+  if(kycStatus===KYC_STATUS.REJECTED && !kycRejectionReason){
+    return sendResponse(res,HttpResponse.REJECTION_REASON_REQUIRED.code,HttpResponse.REJECTION_REASON_REQUIRED.message);
+  }
+  const updateFields = {
+    kycStatus,
+    kycRejectionReason: kycStatus === KYC_STATUS.REJECTED ? kycRejectionReason : null,
+  };
+  const updatedUser = await User.findOneAndUpdate({userId},updateFields,{new:true});
+    if (!updatedUser) {
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message)
+    }
+    return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,updatedUser);
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message)
+  }
+}
