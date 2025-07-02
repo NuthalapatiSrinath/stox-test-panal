@@ -21,9 +21,13 @@ export const genderOptions = {
   FEMALE: 'female',
   OTHER: 'other',
 };
-export const contestCatogoryTypes ={
+export const CONTESTCATEGORYTYPE ={
   DAILY: 'Daily',
   HOURLY: 'Hourly',
   WEEKLY: 'Weekly',
   MONTHLY:'Monthly',
+}
+export const CONTESTYPE = {
+  HEAD_TO_HEAD:'Head to Head',
+  MULTIPLE_MEMBER:'Multiple Member'
 }
