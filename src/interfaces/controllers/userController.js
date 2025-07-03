@@ -6,7 +6,7 @@ import { sendResponse } from "../middlewares/responseHandler.js";
 import { HttpResponse } from "../../utils/responses.js";
 import { generateToken, verifyTokenFromRequest } from "../middlewares/auth.js";
 import { loggerMonitor } from "../../utils/logger.js";
-
+import redisClient from "../../infrastructure/redis/index.js";
 export const registerUser = async (req, res) => {
   try {
     const { username, emailId, mobileNumber, password } = req.body;
@@ -101,9 +101,7 @@ export const loginWithPassword = async (req, res) => {
       sendResponse(
         res,
         HttpResponse.WRONG_PASSWORD.code,
-        HttpResponse.WRONG_PASSWORD.message,
-        null,
-        false
+        HttpResponse.WRONG_PASSWORD.message
       );
     }
     user.loginAttempts += 1;
@@ -112,19 +110,17 @@ export const loginWithPassword = async (req, res) => {
       return sendResponse(
         res,
         HttpResponse.UNAUTHORIZED.code,
-        HttpResponse.UNAUTHORIZED.message_3,
-        null,
-        false
+        HttpResponse.UNAUTHORIZED.message_3
       );
     }
     user.lastLoginAt = new Date();
     user.loginAttempts = 0;
-    user.isVerified= true;
+    user.isVerified = true;
     await user.save();
     const token = generateToken({
       userId: user.userId,
       role: user.role,
-      email: user.emailId
+      email: user.emailId,
     });
     loggerMonitor.info(HttpResponse.OK.code, HttpResponse.OK.message);
     return sendResponse(
@@ -165,7 +161,7 @@ export const sendOtp = async (req, res) => {
     console.log(otp);
     user.otpCode = hashOtp;
     user.otpType = type;
-    user.otpExpiresAt = new Date(Date.now() + 3* 60 * 1000);
+    user.otpExpiresAt = new Date(Date.now() + 3 * 60 * 1000);
     user.otpLastSentAt = new Date();
     user.otpAttemptCount = 0;
     await sendOtpEmail(emailId, otp);
@@ -207,7 +203,7 @@ export const verifyOtp = async (req, res) => {
       return sendResponse(
         res,
         HttpResponse.FORBIDDEN.code,
-        "Too many failed attempts. Please request a new OTP.",
+        HttpResponse.FORBIDDEN.message_2,
         null,
         false
       );
@@ -221,19 +217,19 @@ export const verifyOtp = async (req, res) => {
       return sendResponse(
         res,
         HttpResponse.BAD_REQUEST.code,
-        "OTP has expired"
+        HttpResponse.BAD_REQUEST.message_2
       );
     }
     if (!user.otpCode || !user.otpExpiresAt) {
       return sendResponse(
         res,
         HttpResponse.BAD_REQUEST.code,
-        "No OTP request found. Please request a new OTP.",
+        HttpResponse.BAD_REQUEST.meesage_3,
         null,
         false
       );
     }
-      if (user.isBlocked === true) {
+    if (user.isBlocked === true) {
       return sendResponse(
         res,
         HttpResponse.UNAUTHORIZED.code,
@@ -251,7 +247,11 @@ export const verifyOtp = async (req, res) => {
         HttpResponse.UNAUTHORIZED.message,
         HttpResponse.UNAUTHORIZED.code
       );
-      return sendResponse(res, HttpResponse.UNAUTHORIZED.code, "Invalid OTP");
+      return sendResponse(
+        res,
+        HttpResponse.UNAUTHORIZED.code,
+        HttpResponse.UNAUTHORIZED.message_4
+      );
     }
     user.otpCode = undefined;
 
@@ -267,7 +267,7 @@ export const verifyOtp = async (req, res) => {
     return sendResponse(
       res,
       HttpResponse.OK.code,
-      "OTP verified successfully",
+      HttpResponse.OK.message_2,
       token
     );
   } catch (err) {
@@ -284,12 +284,22 @@ export const getUserByToken = async (req, res) => {
   try {
     const decoded = verifyTokenFromRequest(req);
     const { userId } = decoded;
+    const cacheKey = `user:${userId}`;
+    const cachedUser = await redisClient.get(cacheKey);
+    if (cachedUser) {
+      console.log('User served from Redis cache');
+      return sendResponse(
+        res,
+        HttpResponse.OK.code,
+        HttpResponse.OK.message,
+        JSON.parse(cachedUser)
+      );
+    }
     const user = await users
       .findOne({ userId })
       .select(
-        "-password -otpCode -otpExpiresAt -otpAttemptCount -otpLastSentAt -documentImageUrl "
+        '-password -otpCode -otpExpiresAt -otpAttemptCount -otpLastSentAt -documentImageUrl'
       );
-
     if (!user) {
       return sendResponse(
         res,
@@ -297,7 +307,7 @@ export const getUserByToken = async (req, res) => {
         HttpResponse.BAD_REQUEST.message
       );
     }
-
+    await redisClient.setEx(cacheKey, 60 * 10, JSON.stringify(user));
     return sendResponse(
       res,
       HttpResponse.OK.code,
@@ -305,7 +315,7 @@ export const getUserByToken = async (req, res) => {
       user
     );
   } catch (err) {
-    console.error(err.message);
+    console.error('getUserByToken error:', err.message);
     return sendResponse(
       res,
       HttpResponse.INTERNAL_SERVER_ERROR.code,

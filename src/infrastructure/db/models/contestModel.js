@@ -1,7 +1,9 @@
 import mongoose from "mongoose";
+import { v4 as uuidv4 } from "uuid";
 import {CONTESTCATEGORYTYPE,CONTESTYPE} from '../../../domain/constants/enums.js'
 const contestSchema = new mongoose.Schema(
   {
+    userId: { type: String, default: uuidv4 },
     categoryTitle: {
       type: String,
       required: true,

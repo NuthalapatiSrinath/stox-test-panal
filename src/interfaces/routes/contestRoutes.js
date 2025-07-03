@@ -4,5 +4,5 @@ import { addContest,getContestsByCategoryTitle } from '../controllers/contestCon
 const router = express.Router();
 
 router.post('/createContest',addContest);
-router.get("/getContests", getContestsByCategoryTitle);
+router.post("/getContests", getContestsByCategoryTitle);
 export default router;
