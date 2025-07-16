@@ -8,7 +8,7 @@ const s3 = new S3Client({
     accessKeyId: process.env.S3_ACCESS_KEY,
     secretAccessKey: process.env.SECRET_ACCESS_KEY,
   },
-});
+});  
 
 export const upload = (bucketName) =>
   multer({

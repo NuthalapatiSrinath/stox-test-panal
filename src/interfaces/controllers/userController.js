@@ -7,6 +7,8 @@ import { HttpResponse } from "../../utils/responses.js";
 import { generateToken, verifyTokenFromRequest } from "../middlewares/auth.js";
 import { loggerMonitor } from "../../utils/logger.js";
 import redisClient from "../../infrastructure/redis/index.js";
+import otpQueue from "../../infrastructure/queues/emailOtpQueue.js";
+import userEventModel from "../../infrastructure/db/Models/userEventModel.js";
 export const registerUser = async (req, res) => {
   try {
     const { username, emailId, mobileNumber, password } = req.body;
@@ -117,6 +119,15 @@ export const loginWithPassword = async (req, res) => {
     user.loginAttempts = 0;
     user.isVerified = true;
     await user.save();
+    await userEventModel.create({
+      userId: user.userId,
+      type: "user_login",
+      metadata: {
+        email: user.emailId,
+        device: req.headers["user-agent"] || "unknown",
+        ip: req.ip,
+      },
+    });
     const token = generateToken({
       userId: user.userId,
       role: user.role,
@@ -164,7 +175,7 @@ export const sendOtp = async (req, res) => {
     user.otpExpiresAt = new Date(Date.now() + 3 * 60 * 1000);
     user.otpLastSentAt = new Date();
     user.otpAttemptCount = 0;
-    await sendOtpEmail(emailId, otp);
+    await otpQueue.add({emailId, otp});
     await user.save();
     loggerMonitor.log("info", HttpResponse.OK.code, HttpResponse.OK.message);
     return sendResponse(res, HttpResponse.OK.code, HttpResponse.OK.message);
@@ -307,7 +318,7 @@ export const getUserByToken = async (req, res) => {
         HttpResponse.BAD_REQUEST.message
       );
     }
-    await redisClient.setEx(cacheKey, 60 * 10, JSON.stringify(user));
+    await redisClient.setEx(cacheKey, 60 * 10, JSON.stringify(user)); 
     return sendResponse(
       res,
       HttpResponse.OK.code,
@@ -324,3 +335,120 @@ export const getUserByToken = async (req, res) => {
     );
   }
 };
+export const getUserForAdmin = async(req,res)=>{
+  try{
+     const {userId} = req.body;
+     if(!userId){
+      return sendResponse(res,HttpResponse.ALL_FIELDS_REQUIRED.code,HttpResponse.ALL_FIELDS_REQUIRED.message);
+     }
+     const user = await users.findOne({userId});
+     if(!user){
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message)
+     }
+     return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,user)
+  }catch(error){
+
+  }
+}
+export const getAllUsersForAdminDashboard = async (req, res) => {
+  try {
+    const Users = await users.find({}, "username emailId mobileNumber joinedContests");
+
+    const formatted = Users.map(user => ({
+      username: user.username,
+      emailId: user.emailId,
+      mobileNumber: user.mobileNumber,
+      contestsPlayed: user.joinedContests.length
+    }));
+
+    return sendResponse(
+      res,
+      HttpResponse.OK.code,
+      HttpResponse.OK.message,
+      formatted
+    );
+  } catch (err) {
+    console.error(err);
+    return sendResponse(
+      res,
+      HttpResponse.INTERNAL_SERVER_ERROR.code,
+      err
+    );
+  }
+};
+export const getUsersForAdminUserManagement = async(req,res)=>{
+  try{
+     const Users = await users.find({}, "username emailId mobileNumber createdAt walletBalance isActive fullName");
+     const formatted = Users.map(user => ({
+      fullName:user.fullName,
+      username: user.username,
+      emailId: user.emailId,
+      mobileNumber: user.mobileNumber,
+      createdAt:user.createdAt,
+      walletBalance:user.walletBalance,
+      isActive:user.isActive
+    }))
+      return sendResponse(
+      res,
+      HttpResponse.OK.code,
+      HttpResponse.OK.message,
+      formatted
+    );
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message,error)
+  }
+}
+export const updateUserInfo = async(req,res)=>{
+  try{
+     const {userId,walletBalance,isActive}= req.body;
+     const updatedData = {};
+     if(walletBalance !== undefined){
+        updatedData.walletBalance = walletBalance
+     }
+     if(isActive!==undefined){
+      updatedData.isActive =isActive
+     }
+       const updatedUser = await users.findOneAndUpdate(
+      { userId },
+      { $set: updatedData },
+      { new: true }
+    ).select("userId username emailId walletBalance isActive");
+       if (!updatedUser) {
+      return sendResponse(res, HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message);
+    }
+    return sendResponse(
+      res,
+      HttpResponse.OK.code,
+      HttpResponse.OK.message,
+      updatedUser
+    );
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,error)
+  }
+}
+export const setUserOnline = async (userId) => {
+  if (!userId) return;
+  await users.findOneAndUpdate(
+    { userId },
+    { isActive:true }
+  );
+};
+export const setUserOffline = async (userId) => {
+  if (!userId) return;
+  await users.findOneAndUpdate(
+    { userId },
+    { isActive:false }
+  );
+}
+export const filterActiveAndInactiveUsers = async(req,res)=>{
+  try{
+    const {isActive} = req.body;
+    const getUser = await users.find({isActive});
+    return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,getUser)
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message);
+  }
+}

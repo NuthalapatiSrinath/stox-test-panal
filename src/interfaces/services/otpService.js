@@ -16,10 +16,10 @@ export const transporter = nodemailer.createTransport({
     rejectUnauthorized: false,
   },
 });
-export const sendOtpEmail = async (to, otp) => {
+export const sendOtpEmail = async (emailId, otp) => {
   const mailOptions = {
     from: `"Your App" <${process.env.MAIL_USERNAME}>`,
-    to: to,
+    to: emailId,
     subject: 'Your OTP Code',
     html: `
       <h2>OTP Verification</h2>
@@ -30,6 +30,21 @@ export const sendOtpEmail = async (to, otp) => {
 
   await transporter.sendMail(mailOptions);
 };
+export const sendEmail = async (to, subject, text) => {
+  try {
+    const mailOptions = {
+      from: `"Stox11 Support" <${process.env.MAIL_USERNAME}>`,
+      to,
+      subject,
+      text,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`Email sent to ${to}`);
+  } catch (err) {
+    console.error(`Error sending email to ${to}:`, err.message);
+  }
+};
 // export const generateOtp = async () => {
 //   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 //   const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
@@ -38,7 +53,7 @@ export const sendOtpEmail = async (to, otp) => {
 //   console.log(`🔐 OTP for ${userId}: ${otp}`); // In real world, integrate with SMS/Email
 //   return otp;
 // };
-export const generateOtp = async (length = 6)=> {
+export const generateOtp = async (length = 4)=> {
   const digits = '0123456789';
   let otp = '';
   for (let i = 0; i < length; i++) {

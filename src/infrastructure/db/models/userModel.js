@@ -1,7 +1,8 @@
-import mongoose, { model } from "mongoose";
+import mongoose from "mongoose";
 const { Schema } = mongoose;
 import { v4 as uuidv4 } from "uuid";
 import { DocumentTypeEnum, KYC_STATUS } from "../../../domain/constants/enums.js";
+import { type } from "os";
 const UserSchema = new Schema(
   {
     userId: { type: String, default: uuidv4 },
@@ -14,7 +15,7 @@ const UserSchema = new Schema(
       enum: ["user", "admin", "moderator"],
       default: "user",
     },
-    isActive: { type: Boolean, default: true },
+    isActive: { type: Boolean, default: false },
     isVerified: { type: Boolean, default: false },
     kycStatus: {
       type: String,
@@ -63,6 +64,16 @@ const UserSchema = new Schema(
     walletCurrency: { type: String, default: "INR" },
     totalEarnings: { type: Number, default: 0 },
     totalTopups: { type: Number, default: 0 },
+    
+    //Joined Contests
+    joinedContests: [
+  {
+    contestId: { type: String, required: true },
+    teamId: { type: String},
+    joinedAt: { type: Date, default: Date.now }
+  }
+],
+joinedContestIds: [String],
   },
   { timestamps: true }
 );
@@ -72,4 +83,4 @@ UserSchema.index({ mobileNumber: 1 }, { unique: true, sparse: true });
 UserSchema.index({ userId: 1 });
 UserSchema.index({ role: 1, isActive: 1 }); 
 
-export default mongoose.model("User", UserSchema); // ✅ ESM-compatible
+export default mongoose.models.User || mongoose.model("User", UserSchema);

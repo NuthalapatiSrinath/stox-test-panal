@@ -31,3 +31,21 @@ export const CONTESTYPE = {
   HEAD_TO_HEAD:'Head to Head',
   MULTIPLE_MEMBER:'Multiple Member'
 }
+
+export const LEADERBOARDSTATUS = {
+  PENDING:'pending',
+  CALCULATED:'calculated',
+  PAID:'paid'
+}
+
+export const tpeOfTransaction ={
+  TOP_UP:'top-up',
+  WITHDRAW:'withdraw',
+  CONTEST_ENTRY:'contest-entry'
+}
+
+export const transactionResult={
+  PENDING:'pending',
+  SUCCESS:'success',
+  FAILED:'failed'
+}

@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import {CONTESTCATEGORYTYPE,CONTESTYPE} from '../../../domain/constants/enums.js'
 const contestSchema = new mongoose.Schema(
   {
-    userId: { type: String, default: uuidv4 },
+    contestId: { type: String, default: uuidv4 },
     categoryTitle: {
       type: String,
       required: true,
@@ -54,6 +54,16 @@ const contestSchema = new mongoose.Schema(
       startTime: { type: String },
       endTime: { type: String },
     },
+    winningDistribution: [
+  {
+    isRange: { type: Boolean, required: true },
+    fromRank: { type: Number },
+    toRank: { type: Number },
+    rank: { type: Number },
+    amount: { type: Number, required: true }
+  }
+],
+
     countdownSeconds: {
       type: Number,
     },
@@ -64,4 +74,4 @@ const contestSchema = new mongoose.Schema(
 contestSchema.index({ categoryType: 1, contestType: 1 });
 contestSchema.index({ pricePool: 1, winningPercentage: -1 });
 
-export const contest = mongoose.model("Contest", contestSchema);
+export default mongoose.models.Contest || mongoose.model("Contest", contestSchema);

@@ -5,7 +5,7 @@ import { HttpResponse } from "../../utils/responses.js";
 import { loggerMonitor } from "../../utils/logger.js";
 import { upload } from "../../application/services/s3Upload.js";
 import { extractPanFromTextract } from "../../application/services/extractText.js";
-import { KYC_STATUS } from "../../utils/enum.js";
+import { KYC_STATUS } from "../../domain/constants/enums.js";
 export const updateKycInfo = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -73,7 +73,7 @@ export const updateKycInfo = async (req, res) => {
     }
     const updatedUser = await User.findOneAndUpdate(
       { userId },
-      {
+      { 
         fullName,
         dateOfBirth,
         gender,

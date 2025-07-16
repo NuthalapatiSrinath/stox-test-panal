@@ -1,4 +1,4 @@
-import {contest} from "../../infrastructure/db/Models/contestModel.js";
+import contest from "../../infrastructure/db/Models/contestModel.js";
 import { sendResponse } from "../middlewares/responseHandler.js";
 import { HttpResponse } from "../../utils/responses.js";
 import { normalizeTime } from "../middlewares/normalization.js";
@@ -7,7 +7,6 @@ import redisClient from '../../infrastructure/redis/index.js';
 export const addContest = async (req, res) => {
   try {
     const contestData = req.body;
-
     if (!contestData) {
       return sendResponse(
         res,
@@ -15,13 +14,10 @@ export const addContest = async (req, res) => {
         HttpResponse.ALL_FIELDS_REQUIRED.message
       );
     }
-
     const createdContest = await contest.create(contestData);
     console.log("Created contest:", createdContest);
-
     const categoryTitle = createdContest.categoryTitle;
     const startTime = createdContest.timeSlot?.startTime;
-
     await redisClient.del(`contest:${categoryTitle}`);
     if (startTime) {
       await redisClient.del(`contest:${categoryTitle}:${startTime}`);
@@ -45,7 +41,6 @@ export const addContest = async (req, res) => {
 export const getContestsByCategoryTitle = async (req, res) => {
   try {
     const { categoryTitle, time } = req.body;
-
     if (!categoryTitle) {
       return sendResponse(
         res,
@@ -56,9 +51,8 @@ export const getContestsByCategoryTitle = async (req, res) => {
     const cacheTitle = time
       ? `contest:${categoryTitle}:${time}`
       : `contest:${categoryTitle}`;
-
     const cachedContest = await redisClient.get(cacheTitle);
-    if (cachedContest) {
+    if (cachedContest) { 
       console.log('Contest served from Redis cache');
       return sendResponse(
         res,
@@ -67,11 +61,9 @@ export const getContestsByCategoryTitle = async (req, res) => {
         JSON.parse(cachedContest)
       );
     }
-
     const query = {
       categoryTitle: new RegExp(`^${categoryTitle}$`, "i"),
     };
-
     if (time && categoryTitle.toLowerCase() === "intra day") {
       query["timeSlot.startTime"] = normalizeTime(time);
     }
@@ -90,7 +82,6 @@ export const getContestsByCategoryTitle = async (req, res) => {
         ? `${c.timeSlot.startTime} to ${c.timeSlot.endTime}`
         : null
     }));
-
     await redisClient.setEx(cacheTitle, 10 * 60, JSON.stringify(transformed)); 
 
     return sendResponse(
@@ -109,3 +100,69 @@ export const getContestsByCategoryTitle = async (req, res) => {
     );
   }
 };
+export const getContestDetails = async(req,res)=>{
+  try{
+    const {contestId} = req.body;
+    if(!contestId){
+      return sendResponse(res,HttpResponse.ALL_FIELDS_REQUIRED.code,HttpResponse.ALREADY_EXISTS.message);
+    }
+    const contestCache = `contestId:${contestId}`;
+    const contestDetails = await redisClient.get(contestCache);
+       if (contestDetails) {
+          console.log('Contest served from Redis cache');
+          return sendResponse(
+            res,
+            HttpResponse.OK.code,
+            HttpResponse.OK.message,
+            JSON.parse(contestDetails)
+          );
+        }
+    const contests = await contest.findOne({contestId});
+    if(!contests){
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message);
+    }
+    await redisClient.setEx(contestCache, 60 * 10, JSON.stringify(contests));
+    return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,contests);
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message);
+  }
+};
+export const getContestByType = async(req,res)=>{
+    try{
+    const {categoryTitle,contestType} = req.body;
+    if(!categoryTitle||!contestType){
+      return sendResponse(res,HttpResponse.ALL_FIELDS_REQUIRED.code,HttpResponse.ALL_FIELDS_REQUIRED.message);
+    }
+    const findContest = await contest.find({categoryTitle,contestType});
+    if(!findContest){
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message);
+    }
+    return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,findContest)
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message,{error})
+  }
+}
+export const updateContest = async(req,res)=>{
+  try{
+    const {contestId,contestData}= req.body;
+    
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message)
+  }
+}
+export const deleteContest = async(req,res)=>{
+  try{
+    const {contestId}= req.body;
+    const deleteContest = await contest.findOneAndDelete({contestId});
+    if(!deleteContest){
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message_2);
+    }
+    return sendResponse(res,HttpResponse.OK.code,"Deleted Successfully")
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message,error);
+  }
+}
