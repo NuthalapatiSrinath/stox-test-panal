@@ -1,9 +1,10 @@
 export const HttpResponse = {
-  OK: { code: 200, message: 'OK',message_2:"OTP verified successfully" ,message_3:"Selected Stocks Successfully",message_4:"Webhook implemented successfully"},
+  OK: { code: 200, message: 'OK',message_2:"OTP verified successfully" ,message_3:"Selected Stocks Successfully",message_4:"Webhook implemented successfully",message_5:"Notification Sent Successfully"},
   CREATED: { code: 201, message: 'Created',message_2:'Team Created Successfully' },
   UPDATED: { code: 202, message: 'Updated' },
   NOTIFIED:{code:203,message:"Notified Successfully"},
   ALL_FIELDS_REQUIRED:{code:204,message:'All fields are required'},
+  DELETED:{code:205,message:"Deleted Successfully"},
 
   BAD_REQUEST: { code: 400, message: 'Bad Request',message_2:"OTP has expired",meesage_3:"No OTP request found. Please request a new OTP.",message_4:"Please select 20 Stocks" },
   INVALID_MAIL_ADDRESS:{code:405,message:"Invalid Email Address"},
@@ -16,7 +17,7 @@ export const HttpResponse = {
   UNAUTHORIZED: { code: 401, message: 'Unauthorized' ,message_2: "User ID mismatch with token",message_3:'Your account is blocked',message_4:"Invalid OTP"},
   WRONG_PASSWORD:{code:402,message:'Please Enter Correct Password'},
   FORBIDDEN: { code: 403, message: 'Forbidden',message_2:"Too many failed attempts. Please request a new OTP.",message_3:"Your wallet is locked" },
-  NOT_FOUND: { code: 404, message: 'User Not Found',message_2:'No Contest Find' ,message_3:'Transaction Not Found',meesage_4:"Stock data Not found"},
+  NOT_FOUND: { code: 404, message: 'User Not Found',message_2:'No Contest Find' ,message_3:'Transaction Not Found',meesage_4:"Stock data Not found",message_5:"Notification id Not Found"},
   ALREADY_EXISTS: { code: 409, message: 'User Already Exists',message_2: "Already joined this contest" },
   UNPROCESSABLE_ENTITY: { code: 422, message: 'Unprocessable Entity',message_2:"Please Top up Minimum 50",message_3:"Please withdraw Minimum 100",message_4:"Your entry limit is exceeded" },  NO_PARTICIPATION:{code:424,message:"No Participation history"},
 

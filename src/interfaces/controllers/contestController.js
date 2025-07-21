@@ -3,7 +3,6 @@ import { sendResponse } from "../middlewares/responseHandler.js";
 import { HttpResponse } from "../../utils/responses.js";
 import { normalizeTime } from "../middlewares/normalization.js";
 import redisClient from "../../infrastructure/redis/index.js";
-import { send } from "process";
 
 export const addContest = async (req, res) => {
   try {

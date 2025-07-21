@@ -10,6 +10,7 @@ import redisClient from "../../infrastructure/redis/index.js";
 import otpQueue from "../../infrastructure/queues/emailOtpQueue.js";
 import userEventModel from "../../infrastructure/db/Models/userEventModel.js";
 import contestModel from "../../infrastructure/db/Models/contestModel.js";
+import { uploadProfileImage } from "../../application/services/s3Upload.js";
 
 export const registerUser = async (req, res) => {
   try {
@@ -77,7 +78,7 @@ export const registerUser = async (req, res) => {
 };
 export const loginWithPassword = async (req, res) => {
   try {
-    const { emailId, password } = req.body;
+    const { emailId, password,fcmToken } = req.body;
     if ((!emailId, !password)) {
       sendResponse(
         res,
@@ -121,6 +122,9 @@ export const loginWithPassword = async (req, res) => {
     user.lastLoginAt = new Date();
     user.loginAttempts = 0;
     user.isVerified = true;
+    if (fcmToken) {
+      user.fcmToken = fcmToken;
+    }
     await user.save();
     await userEventModel.create({
       userId: user.userId,
@@ -488,3 +492,36 @@ export const participationHistory = async(req,res)=>{
     return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message,error);
   }
 }
+export const uploadProfilePic = (req, res) => {
+  const uploadSingle = uploadProfileImage(process.env.S3_BUCKET_NAME).single("profilePicture");
+
+  uploadSingle(req, res, async function (err) {
+    if (err) {
+      return res.status(400).json({ message: err.message });
+    }
+    try {
+      const {userId} = req.body;
+      if (!userId) {
+        return sendResponse(
+          res,
+          HttpResponse.ALL_FIELDS_RUIRED.code,
+          HttpResponse.ALL_FIELDS_REQUIRED.message
+        );
+      }
+    const profilePicture = req.file?.location || null;
+    const updateProfilePic = await users.findOneAndUpdate({userId},{profilePicture});
+    if(!updateProfilePic){
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message);
+    }
+    return sendResponse(res,HttpResponse.UPDATED.code,HttpResponse.UPDATED.message);
+    } catch (error) {
+      console.error(error);
+      return sendResponse(
+        res,
+        HttpResponse.INTERNAL_SERVER_ERROR.code,
+        HttpResponse.INTERNAL_SERVER_ERROR.message,
+        error
+      );
+    }
+  });
+};

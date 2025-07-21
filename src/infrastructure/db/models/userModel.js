@@ -64,6 +64,7 @@ const UserSchema = new Schema(
     language: { type: String, default: "en" },
     timezone: { type: String, default: "UTC" },
     darkMode: { type: Boolean, default: false },
+    fcmToken: { type: String },
 
     // Wallet Extensions
     walletLocked: { type: Boolean, default: false },

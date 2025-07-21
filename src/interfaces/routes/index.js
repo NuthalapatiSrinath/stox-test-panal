@@ -7,6 +7,7 @@ import stockRoute from './stockRoutes.js'
 import walletRoute from './walletRoutes.js'
 import chatBotRoute from './chatBot.js'
 import analyticsRoute from './analyticsRoutes.js'
+import notificationRoute from './notificationRoutes.js'
 const router = express.Router();
 
 router.use('/users', userRoutes);
@@ -16,5 +17,6 @@ router.use('/team',teamRoutes);
 router.use('/stock',stockRoute);
 router.use('/wallet',walletRoute);
 router.use('/chatBot',chatBotRoute);
-router.use('/analytics',analyticsRoute)
+router.use('/analytics',analyticsRoute);
+router.use('/notification',notificationRoute);
 export default router;

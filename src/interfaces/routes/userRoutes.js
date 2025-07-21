@@ -10,7 +10,8 @@ import {
   getUserForAdmin,
   filterActiveAndInactiveUsers,
   participationHistory,
-  updateWalletAndActive
+  updateWalletAndActive,
+  uploadProfilePic
 } from "../controllers/userController.js";
 import { userSignupValidator,userLoginValidator } from "../../utils/validators.js";
 import { handleValidation } from "../middlewares/handleValidation.js";
@@ -29,4 +30,5 @@ router.post("/updateUserInfo",updateWalletAndActive);
 router.post("/getUser",getUserForAdmin);
 router.post("/getUserBasedOnIsActive",filterActiveAndInactiveUsers);
 router.post("/participationHistory",participationHistory);
+router.post("/uploadProfilePic",uploadProfilePic);
 export default router;
