@@ -3,6 +3,7 @@ import { tpeOfTransaction, transactionResult } from "../../../domain/constants/e
 const {Schema} = mongoose;
 const walletSchema = new Schema({
     userId:{type:String,required:true},
+    name:{type:String},
     balance:{type:Number,default:0},
     transactions:[
         {

@@ -6,8 +6,8 @@ export const fetchAndStoreTickers = async (req, res) => {
   try {
     const response = await axios.get("http://api.marketstack.com/v1/exchanges/XBOM/tickers", {
       params: {
-        access_key: "91fb4c797ef69e6b8460207d08ab01ff",
-        limit: 6743
+        access_key: "034b14791ffa523f9f704043e013d196",
+        limit: 100
       },
       timeout: 10000
     });
@@ -38,10 +38,22 @@ export const fetchAndStoreTickers = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Fetch error:", err.message);
+    console.error("Marekt Stack API is Not Working:", err.message);
     return res.status(500).json({ success: false, message: "Failed to store tickers" });
   }
 };
+export const getTotalStocks = async(req,res)=>{
+  try{
+    const totalStockData = await stockModel.find();
+    if(!totalStockData){
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.meesage_4)
+    }
+    return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,{totalStockData})
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message)
+  }
+}
 export const updateSelectedStocks = async (req, res) => {
   try {
     const { symbols } = req.body;

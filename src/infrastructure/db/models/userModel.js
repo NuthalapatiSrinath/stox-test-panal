@@ -1,18 +1,23 @@
 import mongoose from "mongoose";
 const { Schema } = mongoose;
 import { v4 as uuidv4 } from "uuid";
-import { DocumentTypeEnum, KYC_STATUS } from "../../../domain/constants/enums.js";
-import { type } from "os";
+import {
+  DocumentTypeEnum,
+  KYC_STATUS,
+  LOGINTYPES,
+  OTPTYPE,
+} from "../../../domain/constants/enums.js";
 const UserSchema = new Schema(
   {
-    userId: { type: String, default: uuidv4 },
+    userId: { type: String, default: uuidv4, unique: true },
     emailId: { type: String, required: true },
+    name: { type: String, required: true },
     username: { type: String },
     password: { type: String, required: true },
     mobileNumber: { type: String },
     role: {
       type: String,
-      enum: ["user", "admin", "moderator"],
+      enum: Object.values(LOGINTYPES),
       default: "user",
     },
     isActive: { type: Boolean, default: false },
@@ -23,23 +28,24 @@ const UserSchema = new Schema(
       default: "pending",
     },
     walletBalance: { type: Number, default: 0 },
-
+    profilePicture:{type:String,default:"https://cdn.sologo.ai/temp24h/logo/403b5250-85a5-446b-a47b-f3c9f6bb34ca.jpeg"},
+    
     // OTP Verification
     otpCode: { type: String },
-    otpType: { type: String, enum: ["email_verification", "login", "reset"] },
+    otpType: { type: String, enum: Object.values(OTPTYPE) },
     otpExpiresAt: { type: Date },
     otpAttemptCount: { type: Number, default: 0 },
     otpLastSentAt: { type: Date },
 
     // KYC Fields
     fullName: { type: String },
-    dateOfBirth: { type:String },
+    dateOfBirth: { type: String },
     gender: { type: String },
-    documentType: { type: String, enum:Object.values(DocumentTypeEnum)},
+    documentType: { type: String, enum: Object.values(DocumentTypeEnum) },
     documentNumber: { type: String },
     documentImageUrl: { type: String },
     kycVerifiedAt: { type: Date },
-    kycRejectionReason:{type:String},
+    kycRejectionReason: { type: String },
 
     // Device & Login Info
     lastLoginAt: { type: Date },
@@ -64,16 +70,16 @@ const UserSchema = new Schema(
     walletCurrency: { type: String, default: "INR" },
     totalEarnings: { type: Number, default: 0 },
     totalTopups: { type: Number, default: 0 },
-    
+
     //Joined Contests
     joinedContests: [
-  {
-    contestId: { type: String, required: true },
-    teamId: { type: String},
-    joinedAt: { type: Date, default: Date.now }
-  }
-],
-joinedContestIds: [String],
+      {
+        contestId: { type: String, required: true },
+        teamId: { type: String },
+        joinedAt: { type: Date, default: Date.now },
+      },
+    ],
+    joinedContestIds: [String],
   },
   { timestamps: true }
 );
@@ -81,6 +87,6 @@ joinedContestIds: [String],
 UserSchema.index({ emailId: 1 }, { unique: true });
 UserSchema.index({ mobileNumber: 1 }, { unique: true, sparse: true });
 UserSchema.index({ userId: 1 });
-UserSchema.index({ role: 1, isActive: 1 }); 
+UserSchema.index({ role: 1, isActive: 1 });
 
 export default mongoose.models.User || mongoose.model("User", UserSchema);

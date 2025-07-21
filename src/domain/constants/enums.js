@@ -21,15 +21,23 @@ export const genderOptions = {
   FEMALE: 'female',
   OTHER: 'other',
 };
-export const CONTESTCATEGORYTYPE ={
-  DAILY: 'Daily',
-  HOURLY: 'Hourly',
-  WEEKLY: 'Weekly',
-  MONTHLY:'Monthly',
+export const CONTESTTYPE ={
+  BUY_TODAY_SELL_TOMORROW: 'Buy Today Sell Tomorrow',
+  INTRA_DAY: 'Intra Day',
+  SEVEN_DAY_CLASH: '7-Day clash',
+  ONE_SHOT_GLORY:'One Shot Glory', 
 }
-export const CONTESTYPE = {
-  HEAD_TO_HEAD:'Head to Head',
-  MULTIPLE_MEMBER:'Multiple Member'
+
+export const HOURTYPE={
+  ONE_HOUR:'1hr',
+  TWO_HOURS:'2hrs',
+  THREE_HOURS:'3hrs',
+  SIX_HOURS:'6hrs'
+} 
+
+export const CONTESTFORMAT = {
+  HEAD_TO_HEAD:'Head to Head Contest',
+  MULTIPLE_MEMBER:'Multiple Member Contest'
 }
 
 export const LEADERBOARDSTATUS = {
@@ -48,4 +56,17 @@ export const transactionResult={
   PENDING:'pending',
   SUCCESS:'success',
   FAILED:'failed'
+}
+
+export const LOGINTYPES={
+  USER:'user',
+  ADMIN:'admin',
+  MODERATER:'moderator'
+}
+
+
+export const OTPTYPE = {
+  EMAIL_VERIFICATION :'email_verification',
+  LOGIN:'login',
+  RESET:'reset'
 }

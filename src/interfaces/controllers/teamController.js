@@ -31,11 +31,12 @@ export const joinContestWithTeam = async (req, res) => {
         HttpResponse.NOT_FOUND.message_2
       );
     }
-    if (user.joinedContests.some((entry) => entry.contestId === contestId)) {
+    const entryCount = user.joinedContests.filter(c=>c.contestId===contestId).length
+    if (entryCount>contest.entryLimit) {
       return sendResponse(
         res,
-        HttpResponse.ALREADY_EXISTS.code,
-        HttpResponse.ALREADY_EXISTS.message_2
+        HttpResponse.UNPROCESSABLE_ENTITY.code,
+        HttpResponse.UNPROCESSABLE_ENTITY.message_4
       );
     }
     const entryFee = contest.entryFee;
@@ -46,7 +47,7 @@ export const joinContestWithTeam = async (req, res) => {
         metadata: {
           contestId,
           reason: "low_balance",
-          timestamp: new Date(),
+          timestamp: new Date(), 
         },
       });
       return sendResponse(

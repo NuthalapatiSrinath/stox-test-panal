@@ -4,6 +4,7 @@ import { sendResponse } from "../middlewares/responseHandler.js";
 import { HttpResponse } from "../../utils/responses.js";
 import { v4 as uuidv4 } from "uuid";
 import userEventModel from "../../infrastructure/db/Models/userEventModel.js";
+import axios from "axios";
 
 export const getTransactionDetails = async (req, res) => {
   try {
@@ -38,80 +39,52 @@ export const getTransactionDetails = async (req, res) => {
 export const topUpWallet = async (req, res) => {
   try {
     const { userId, amount } = req.body;
+
     if (!userId || !amount) {
-      return sendResponse(
-        res,
-        HttpResponse.ALL_FIELDS_REQUIRED.code,
-        HttpResponse.ALL_FIELDS_REQUIRED.message
-      );
+      return sendResponse(res, 400, "User ID and amount are required.");
     }
+
     if (amount < 50) {
-      return sendResponse(
-        res,
-        HttpResponse.UNPROCESSABLE_ENTITY.code,
-        HttpResponse.UNPROCESSABLE_ENTITY.message_2
-      );
+      return sendResponse(res, 422, "Minimum top-up amount is ₹50.");
     }
+
     const user = await userModel.findOne({ userId });
-    if (!user) {
-      return sendResponse(
-        res,
-        HttpResponse.NOT_FOUND.code,
-        HttpResponse.NOT_FOUND.message
-      );
-    }
-    if (user.walletLocked === true) {
-      return sendResponse(
-        res,
-        HttpResponse.FORBIDDEN.code,
-        HttpResponse.FORBIDDEN.message_3
-      );
-    }
-    const topUPMoney = await Wallet.findOneAndUpdate(
-      { userId },
-      {
-        $inc: { balance: amount },
-        $push: {
-          transactions: {
-            transactionType: "top-up",
-            amount,
-            date: new Date(),
-            tnxId: uuidv4(),
-            status: "success",
-          },
-        },
+    if (!user) return sendResponse(res, 404, "User not found.");
+    if (user.walletLocked) return sendResponse(res, 403, "Wallet is locked.");
+
+    const orderId = `CF_${uuidv4()}`;
+    const payload = {
+      order_id: orderId,
+      order_amount: amount,
+      order_currency: "INR",
+      customer_details: {
+        customer_id: user.userId,
+        customer_email: user.emailId,
+        customer_phone: user.mobileNumber || "9999999999",
       },
-      { new: true, upsert: true }
+    };
+
+    const response = await axios.post(
+      "https://sandbox.cashfree.com/pg/orders",
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-version": "2022-09-01",
+          "x-client-id": process.env.CASHFREE_APP_ID,
+          "x-client-secret": process.env.CASHFREE_SECRET_KEY,
+        },
+      }
     );
-    if (!topUPMoney) {
-      return sendResponse(
-        res,
-        HttpResponse.NOT_FOUND.code,
-        HttpResponse.NOT_FOUND.message
-      );
-    }
-    user.walletBalance += amount;
-    user.totalTopups += 1;
-    await user.save();
-    await userEventModel.create({
-    userId,
-    type: "wallet_topup",
-    metadata: {
-    amount,
-    tnxId: topUPMoney.transactions.at(-1)?.tnxId || uuidv4(),
-    balanceAfterTopup: user.walletBalance,
-  },
-});
-    return sendResponse(res, HttpResponse.OK.code, HttpResponse.OK.message, {
-      topUPMoney,
+
+    return sendResponse(res, 200, "Payment order created", {
+      orderId: response.data.order_id,
+      paymentSessionId: response.data.payment_session_id,
     });
-  } catch (error) {
-    console.log(error);
-    return sendResponse(
-      res,
-      HttpResponse.INTERNAL_SERVER_ERROR.code,
-      HttpResponse.INTERNAL_SERVER_ERROR.message
-    );
+
+  } catch (err) {
+    console.error("Cashfree error:", err.message);
+    return sendResponse(res, 500, "Something went wrong", err.message);
   }
 };
 export const withdrawWallet = async (req, res) => {
@@ -169,6 +142,9 @@ export const withdrawWallet = async (req, res) => {
             status: "success",
           },
         },
+         $setOnInsert: {
+         name:user.name
+    },
       },
       { new: true }
     );
@@ -198,7 +174,7 @@ export const withdrawWallet = async (req, res) => {
 };
 export const getAllTransactions = async (req, res) => {
   try {
-    const allTransactions = await Wallet.find().select("userId transactions");
+    const allTransactions = await Wallet.find().select("userId transactions name ");
     return sendResponse(res, HttpResponse.OK.code, { allTransactions });
   } catch (error) {
     console.log(error);

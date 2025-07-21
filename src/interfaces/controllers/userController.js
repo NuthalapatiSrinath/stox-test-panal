@@ -9,10 +9,12 @@ import { loggerMonitor } from "../../utils/logger.js";
 import redisClient from "../../infrastructure/redis/index.js";
 import otpQueue from "../../infrastructure/queues/emailOtpQueue.js";
 import userEventModel from "../../infrastructure/db/Models/userEventModel.js";
+import contestModel from "../../infrastructure/db/Models/contestModel.js";
+
 export const registerUser = async (req, res) => {
   try {
-    const { username, emailId, mobileNumber, password } = req.body;
-    if (!username || !emailId || !mobileNumber || !password) {
+    const { name,username, emailId, mobileNumber, password } = req.body;
+    if (!name||!username || !emailId || !mobileNumber || !password) {
       loggerMonitor.error(
         HttpResponse.ALL_FIELDS_REQUIRED.message,
         HttpResponse.ALL_FIELDS_REQUIRED.code
@@ -44,6 +46,7 @@ export const registerUser = async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
     const newUser = await users.create({
       userId: uuidv4(),
+      name,
       emailId,
       username,
       password: passwordHash,
@@ -347,18 +350,20 @@ export const getUserForAdmin = async(req,res)=>{
      }
      return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,user)
   }catch(error){
-
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message)
   }
 }
 export const getAllUsersForAdminDashboard = async (req, res) => {
   try {
-    const Users = await users.find({}, "username emailId mobileNumber joinedContests");
+    const Users = await users.find({}, "userId name username emailId mobileNumber joinedContestIds");
 
     const formatted = Users.map(user => ({
+      userId:user.userId,
       username: user.username,
       emailId: user.emailId,
       mobileNumber: user.mobileNumber,
-      contestsPlayed: user.joinedContests.length
+      contestsPlayed: user.joinedContestIds.length
     }));
 
     return sendResponse(
@@ -368,7 +373,7 @@ export const getAllUsersForAdminDashboard = async (req, res) => {
       formatted
     );
   } catch (err) {
-    console.error(err);
+
     return sendResponse(
       res,
       HttpResponse.INTERNAL_SERVER_ERROR.code,
@@ -378,8 +383,10 @@ export const getAllUsersForAdminDashboard = async (req, res) => {
 };
 export const getUsersForAdminUserManagement = async(req,res)=>{
   try{
-     const Users = await users.find({}, "username emailId mobileNumber createdAt walletBalance isActive fullName");
+     const Users = await users.find({}, "userId name username emailId mobileNumber createdAt walletBalance isActive");
      const formatted = Users.map(user => ({
+      userId:user.userId,
+      name:user.name,
       fullName:user.fullName,
       username: user.username,
       emailId: user.emailId,
@@ -399,7 +406,7 @@ export const getUsersForAdminUserManagement = async(req,res)=>{
     return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message,error)
   }
 }
-export const updateUserInfo = async(req,res)=>{
+export const updateWalletAndActive = async(req,res)=>{
   try{
      const {userId,walletBalance,isActive}= req.body;
      const updatedData = {};
@@ -415,6 +422,7 @@ export const updateUserInfo = async(req,res)=>{
       { new: true }
     ).select("userId username emailId walletBalance isActive");
        if (!updatedUser) {
+      loggerMonitor.error()
       return sendResponse(res, HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message);
     }
     return sendResponse(
@@ -450,5 +458,33 @@ export const filterActiveAndInactiveUsers = async(req,res)=>{
   }catch(error){
     console.log(error);
     return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message);
+  }
+}
+export const participationHistory = async(req,res)=>{
+  try{
+    const {userId}= req.body;
+    const user = await users.findOne({ userId });
+    if(!user){
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message);
+    }
+    if (!user.joinedContests || user.joinedContests.length === 0) {
+      return sendResponse(res,HttpResponse.NO_PARTICIPATION.code,HttpResponse.NO_PARTICIPATION.message);
+    }
+    const contestIds = await user.joinedContests.map(jc=>jc.contestId);
+    console.log(contestIds);
+    const contests = await contestModel.find({contestId:{$in: contestIds}});
+    console.log(contests);
+    const history = contests.map(c=>({
+      contestType:c.contestType,
+      entryFee:c.entryFee,
+      hourType:c.hourType,
+      date:Date().toString()
+    }))
+    console.log(history);
+    return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,{history}
+    )
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message,error);
   }
 }

@@ -7,9 +7,10 @@ import {
   getUserByToken,
   getAllUsersForAdminDashboard,
   getUsersForAdminUserManagement,
-  updateUserInfo,
   getUserForAdmin,
-  filterActiveAndInactiveUsers
+  filterActiveAndInactiveUsers,
+  participationHistory,
+  updateWalletAndActive
 } from "../controllers/userController.js";
 import { userSignupValidator,userLoginValidator } from "../../utils/validators.js";
 import { handleValidation } from "../middlewares/handleValidation.js";
@@ -24,7 +25,8 @@ router.get("/getUserDetails", getUserByToken);
 router.post("/verify-otp", verifyOtp); 
 router.get("/admin/dashboard/users",getAllUsersForAdminDashboard);
 router.get("/getUsersForUserManagement",getUsersForAdminUserManagement);
-router.post("/updateUserInfo",updateUserInfo);
+router.post("/updateUserInfo",updateWalletAndActive);
 router.post("/getUser",getUserForAdmin);
-router.post("/getUserBasedOnIsActive",filterActiveAndInactiveUsers)
+router.post("/getUserBasedOnIsActive",filterActiveAndInactiveUsers);
+router.post("/participationHistory",participationHistory);
 export default router;

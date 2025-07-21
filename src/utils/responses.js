@@ -1,5 +1,5 @@
 export const HttpResponse = {
-  OK: { code: 200, message: 'OK',message_2:"OTP verified successfully" ,message_3:"Selected Stocks Successfully"},
+  OK: { code: 200, message: 'OK',message_2:"OTP verified successfully" ,message_3:"Selected Stocks Successfully",message_4:"Webhook implemented successfully"},
   CREATED: { code: 201, message: 'Created',message_2:'Team Created Successfully' },
   UPDATED: { code: 202, message: 'Updated' },
   NOTIFIED:{code:203,message:"Notified Successfully"},
@@ -16,10 +16,10 @@ export const HttpResponse = {
   UNAUTHORIZED: { code: 401, message: 'Unauthorized' ,message_2: "User ID mismatch with token",message_3:'Your account is blocked',message_4:"Invalid OTP"},
   WRONG_PASSWORD:{code:402,message:'Please Enter Correct Password'},
   FORBIDDEN: { code: 403, message: 'Forbidden',message_2:"Too many failed attempts. Please request a new OTP.",message_3:"Your wallet is locked" },
-  NOT_FOUND: { code: 404, message: 'User Not Found',message_2:'No Contest Find' ,message_3:'Transaction Not Found'},
+  NOT_FOUND: { code: 404, message: 'User Not Found',message_2:'No Contest Find' ,message_3:'Transaction Not Found',meesage_4:"Stock data Not found"},
   ALREADY_EXISTS: { code: 409, message: 'User Already Exists',message_2: "Already joined this contest" },
-  UNPROCESSABLE_ENTITY: { code: 422, message: 'Unprocessable Entity',message_2:"Please Top up Minimum 50",message_3:"Please withdraw Minimum 100" },
-  
+  UNPROCESSABLE_ENTITY: { code: 422, message: 'Unprocessable Entity',message_2:"Please Top up Minimum 50",message_3:"Please withdraw Minimum 100",message_4:"Your entry limit is exceeded" },  NO_PARTICIPATION:{code:424,message:"No Participation history"},
+
   INTERNAL_SERVER_ERROR: { code: 500, message: 'Internal Server Error' },
   NOT_IMPLEMENTED: { code: 501, message: 'Not Implemented' },
   BAD_GATEWAY: { code: 502, message: 'Bad Gateway',message_2:"You must select 10 stocks" },

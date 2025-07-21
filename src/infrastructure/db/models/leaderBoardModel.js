@@ -2,9 +2,8 @@ import { LEADERBOARDSTATUS } from "../../../domain/constants/enums";
 import mongoose from mongoose;
 import { v4 as uuidv4 } from "uuid";
 
-const {schema} = mongoose;
 
-const leaderBoardSchema = new schema({
+const leaderBoardSchema = new mongoose.schema({
     leaderBoardId:{type:String,default:uuidv4},
     userId:{type:String,required:true},
     contestId:{type:String,required:true},
@@ -14,12 +13,11 @@ const leaderBoardSchema = new schema({
     rank:{type:Number,default:null},
     prizeMoney:{type:Number,default:0},
 
-    status:{type:String,enum:Object.values(LEADERBOARDSTATUS),default:'pending'},
-
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+},
+{
+    timestamps:true
 });
 
-leaderBoardSchema.index({contestId,teamId});
+leaderBoardSchema.index({contestId,teamId,userId});
 
 export default mongoose.models.Leaderboard || mongoose.model("Leaderboard", leaderBoardSchema);

@@ -235,3 +235,26 @@ export const updateKycStatus = async(req,res)=>{
     return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message)
   }
 }
+export const getKycDetails = async(req,res)=>{
+  try{
+    const getAllKycDetails = await User.find({},"userId fullName username mobileNumber documentNumber dateOfBirth documentImageUrl kycStatus kycRejectionReason");
+    if(!getAllKycDetails){
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message);
+    }
+    const formattedKyc = getAllKycDetails.map(kyc=>({
+      userId:kyc.userId,
+      fullName:kyc.fullName,
+      username:kyc.username,
+      mobileNumber:kyc.mobileNumber,
+      documentNumber:kyc.documentNumber,
+      dateOfBirth:kyc.dateOfBirth,
+      documentImageUrl:kyc.documentImageUrl,
+      kycStatus:kyc.kycStatus,
+      kycRejectionReason:kyc.kycRejectionReason
+    }))
+    return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,{formattedKyc});
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message);
+  }
+}
