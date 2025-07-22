@@ -54,7 +54,10 @@ export const deleteNotification = async(req,res)=>{
       return sendResponse(res,HttpResponse.ALL_FIELDS_REQUIRED.code,HttpResponse.ALL_FIELDS_REQUIRED.message);
     }
     const deleteNotificationDocument = await notificationModel.findOneAndDelete({notificationId});
-      return sendResponse(res,HttpResponse.DELETED.code,HttpResponse.DELETED.message)
+    if(!deleteNotificationDocument){
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message_5)
+    }
+    return sendResponse(res,HttpResponse.DELETED.code,HttpResponse.DELETED.message)
   }catch(error){
     console.log(error);
     return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message);
@@ -136,11 +139,11 @@ export const sendNotificationToAll = async (req, res) => {
   try {
     const { notificationId } = req.body;
     if (!notificationId) {
-      return res.status(400).json({ success: false, message: "notificationId is required" });
+      return sendResponse(res,HttpResponse.ALL_FIELDS_REQUIRED.code,HttpResponse.ALL_FIELDS_REQUIRED.message);
     }
     const notification = await notificationModel.findOne({ notificationId });
     if (!notification) {
-      return res.status(404).json({ success: false, message: "Notification not found" });
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message_5);
     }
     const users = await userModel.find({ fcmToken: { $exists: true, $ne: null } });
     if (!users.length) {
@@ -168,7 +171,61 @@ export const sendNotificationToAll = async (req, res) => {
       message: `Notification sent to ${successes} users, ${failures} failed.`,
     });
   } catch (err) {
-    console.error("Notification error:", err);
-    return res.status(500).json({ success: false, message: err.message });
+    console.log(err);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message)
+  }
+};
+export const editNotificationDocument = async(req,res)=>{
+  try{
+    const {notificationId,notificationData}= req.body;
+    if(!notificationId||!notificationData){
+      return sendResponse(res,HttpResponse.ALL_FIELDS_REQUIRED.code,HttpResponse.ALL_FIELDS_REQUIRED.message);
+    }
+    const editNotification = await notificationModel.findOneAndUpdate({notificationId},{$set:notificationData},{new:true});
+    if(!editNotification){
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message_5);
+    }
+    return sendResponse(res,HttpResponse.UPDATED.code,HttpResponse.UPDATED.message,editNotification);
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message);
+  }
+}
+export const enableDisableNotification = async (req, res) => {
+  try {
+    const { notificationId, disable } = req.body;
+    if (!notificationId || disable === undefined) {
+      return sendResponse(
+        res,
+        HttpResponse.ALL_FIELDS_REQUIRED.code,
+        HttpResponse.ALL_FIELDS_REQUIRED.message
+      );
+    }
+    const disableContest = await notificationModel.findOneAndUpdate(
+      { notificationId },
+      { $set: { disable } },
+      { new: true }
+    );
+    if (!disableContest) {
+      return sendResponse(
+        res,
+        HttpResponse.NOT_FOUND.code,
+        HttpResponse.NOT_FOUND.message_2
+      );
+    }
+    return sendResponse(
+      res,
+      HttpResponse.UPDATED.code,
+      HttpResponse.UPDATED.message,
+      { disableContest }
+    );
+  } catch (error) {
+    console.log(error);
+    return sendResponse(
+      res,
+      HttpResponse.INTERNAL_SERVER_ERROR.code,
+      HttpResponse.INTERNAL_SERVER_ERROR.message,
+      { error }
+    );
   }
 };

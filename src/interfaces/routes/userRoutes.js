@@ -15,6 +15,7 @@ import {
 } from "../controllers/userController.js";
 import { userSignupValidator,userLoginValidator } from "../../utils/validators.js";
 import { handleValidation } from "../middlewares/handleValidation.js";
+import { verifyToken } from "../middlewares/verifyToken.js";
 
 const router = express.Router();
 
@@ -30,5 +31,5 @@ router.post("/updateUserInfo",updateWalletAndActive);
 router.post("/getUser",getUserForAdmin);
 router.post("/getUserBasedOnIsActive",filterActiveAndInactiveUsers);
 router.post("/participationHistory",participationHistory);
-router.post("/uploadProfilePic",uploadProfilePic);
+router.post("/uploadProfilePic",verifyToken,uploadProfilePic);
 export default router;

@@ -8,11 +8,9 @@ const leaderBoardSchema = new mongoose.schema({
     userId:{type:String,required:true},
     contestId:{type:String,required:true},
     teamId:{type:String,required:true},
-
     score:{type:Number,default:0},
     rank:{type:Number,default:null},
     prizeMoney:{type:Number,default:0},
-
 },
 {
     timestamps:true

@@ -1,4 +1,3 @@
-// src/middlewares/verifyToken.js
 import jwt from "jsonwebtoken";
 import { HttpResponse } from "../../utils/responses.js";
 import { sendResponse } from "./responseHandler.js";
@@ -21,6 +20,7 @@ export const verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET); 
     req.user = decoded;
+    req.admin = decoded;
     next();
   } catch (err) {
     return sendResponse(

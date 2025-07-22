@@ -39,52 +39,56 @@ export const getTransactionDetails = async (req, res) => {
 export const topUpWallet = async (req, res) => {
   try {
     const { userId, amount } = req.body;
-
     if (!userId || !amount) {
-      return sendResponse(res, 400, "User ID and amount are required.");
+      return sendResponse(res,HttpResponse.ALL_FIELDS_REQUIRED.code,HttpResponse.ALL_FIELDS_REQUIRED.message);
     }
-
     if (amount < 50) {
       return sendResponse(res, 422, "Minimum top-up amount is ₹50.");
     }
-
     const user = await userModel.findOne({ userId });
-    if (!user) return sendResponse(res, 404, "User not found.");
+    if (!user) {
+      return sendResponse(
+        res,
+        HttpResponse.NOT_FOUND.code,
+        HttpResponse.NOT_FOUND.message
+      );
+    }
     if (user.walletLocked) return sendResponse(res, 403, "Wallet is locked.");
-
-    const orderId = `CF_${uuidv4()}`;
-    const payload = {
-      order_id: orderId,
-      order_amount: amount,
-      order_currency: "INR",
-      customer_details: {
-        customer_id: user.userId,
-        customer_email: user.emailId,
-        customer_phone: user.mobileNumber || "9999999999",
-      },
-    };
-
-    const response = await axios.post(
-      "https://sandbox.cashfree.com/pg/orders",
-      payload,
+    const topUpMoney = await Wallet.findOneAndUpdate(
+      { userId },
       {
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-version": "2022-09-01",
-          "x-client-id": process.env.CASHFREE_APP_ID,
-          "x-client-secret": process.env.CASHFREE_SECRET_KEY,
+        $inc: { balance: +amount },
+        $push: {
+          transactions: {
+            transactionType: "top-up",
+            amount,
+            date: new Date(),
+            tnxId: uuidv4(),
+            status: "success",
+          },
         },
-      }
+         $setOnInsert: {
+         name:user.name
+    },
+      },
+      { new: true,upsert:true }
     );
-
-    return sendResponse(res, 200, "Payment order created", {
-      orderId: response.data.order_id,
-      paymentSessionId: response.data.payment_session_id,
-    });
-
+   user.walletBalance += amount;
+   user.totalTopups +=1; 
+   await user.save();
+   await userEventModel.create({
+    userId,
+    type: "Topup_Wallet",
+    metadata: {
+      amount,
+      tnxId: uuidv4(),
+      balanceAfterWithdraw: user.walletBalance,
+  },
+});
+  return sendResponse(res,HttpResponse.OK.code, "Payment order created",{topUpMoney});
   } catch (err) {
-    console.error("Cashfree error:", err.message);
-    return sendResponse(res, 500, "Something went wrong", err.message);
+    console.error(err.message);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message, err.message);
   }
 };
 export const withdrawWallet = async (req, res) => {
@@ -156,7 +160,7 @@ export const withdrawWallet = async (req, res) => {
     type: "wallet_withdraw",
     metadata: {
       amount,
-      tnxId: withdrawMoney.transactions.at(-1)?.tnxId || uuidv4(),
+      tnxId: uuidv4(),
       balanceAfterWithdraw: user.walletBalance,
   },
 });
