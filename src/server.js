@@ -54,14 +54,14 @@ server.listen(PORT, () =>
 );
 
 // Ngrok
-ngrok
-  .connect({ addr: PORT, authtoken_from_env: true })
-  .then(async (listener) => {
-    const url = listener.url();
-    console.log(`Ngrok running at: ${url}`);
-    await db.ref("apiUrl").set(url);
-    console.log("Ngrok URL pushed to Firebase");
-  })
-  .catch((err) => {
-    console.error("Error starting Ngrok:", err);
-  });
+// ngrok
+//   .connect({ addr: PORT, authtoken_from_env: true })
+//   .then(async (listener) => {
+//     const url = listener.url();
+//     console.log(`Ngrok running at: ${url}`);
+//     await db.ref("apiUrl").set(url);
+//     console.log("Ngrok URL pushed to Firebase");
+//   })
+//   .catch((err) => {
+//     console.error("Error starting Ngrok:", err);
+//   });

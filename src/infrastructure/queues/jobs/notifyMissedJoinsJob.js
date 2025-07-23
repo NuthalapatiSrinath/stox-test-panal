@@ -1,10 +1,8 @@
-import connectDB from "../../db/connection.js";
 import dotenv from "dotenv";
 import userEventModel from "../../db/Models/userEventModel.js";
 import { sendEmail } from "../../../interfaces/services/otpService.js";
 
 dotenv.config();
-await connectDB();
 
 export const runMissedJoinJob = async () => {
   console.log("🔁 Running missed join notification job...");

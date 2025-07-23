@@ -9,7 +9,7 @@ import {
 } from "../../../domain/constants/enums.js";
 const UserSchema = new Schema(
   {
-    userId: { type: String, default: uuidv4, unique: true },
+    userId: { type: String, default: uuidv4},
     emailId: { type: String, required: true },
     name: { type: String, required: true },
     username: { type: String },

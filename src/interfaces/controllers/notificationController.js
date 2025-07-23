@@ -229,3 +229,15 @@ export const enableDisableNotification = async (req, res) => {
     );
   }
 };
+export const getNotifications = async(req,res)=>{
+  try{
+    const getAllNotifications = await notificationModel.find();
+    if(!getAllNotifications){
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message_5);
+    }
+    return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,{getAllNotifications})
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message)
+  }
+}

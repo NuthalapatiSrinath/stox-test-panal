@@ -3,6 +3,7 @@ import { sendResponse } from "../middlewares/responseHandler.js";
 import { HttpResponse } from "../../utils/responses.js";
 import { normalizeTime } from "../middlewares/normalization.js";
 import redisClient from "../../infrastructure/redis/index.js";
+import contestModel from "../../infrastructure/db/Models/contestModel.js";
 
 export const addContest = async (req, res) => {
   try {
@@ -263,3 +264,15 @@ export const enableDisableContest = async (req, res) => {
     );
   }
 };
+export const getContests = async(req,res)=>{
+  try{
+    const allContests = await contestModel.find();
+    if(!allContests){
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message_2);
+    }
+    return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,{allContests})
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message);
+  }
+}
