@@ -9,7 +9,7 @@ import indexRouter from './interfaces/routes/index.js';
 import { setUserOnline, setUserOffline } from "./interfaces/controllers/userController.js"; 
 import db from "./application/services/fireBase.js";
 import cron from "node-cron";
-import { runMissedJoinJob } from "./infrastructure/queues/jobs/notifyMissedJoinsJob.js";
+// import { runMissedJoinJob } from "./infrastructure/queues/jobs/notifyMissedJoinsJob.js";
 
 dotenv.config();
 
@@ -28,32 +28,27 @@ await connectDB();
 
 // Routes
 app.use('/api', indexRouter);
-cron.schedule("0 * * * *", () => {
-  runMissedJoinJob();
-});
+// cron.schedule("0 * * * *", () => {
+//   runMissedJoinJob();
+// });
 // WebSocket Connection
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
-
   socket.on("user-online", async (userId) => {
     console.log("User online:", userId);
     socket.data.userId = userId;
     await setUserOnline(userId);
   });
-  
   socket.on("disconnect", async () => {
     const userId = socket.data.userId;
     console.log("User disconnected:", userId);
     await setUserOffline(userId);
   });
 });
-
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () =>
   console.log(`Node.js web server at ${PORT} is running...`)
 );
-
-// Ngrok
 // ngrok
 //   .connect({ addr: PORT, authtoken_from_env: true })
 //   .then(async (listener) => {

@@ -1,7 +1,6 @@
 // // src/infrastructure/db/connection.js
 // import mongoose from 'mongoose';
-// import dotenv from 'dotenv';
-// dotenv.config();
+
 
 // const connectDB = async () => {
 //   try {
@@ -31,13 +30,16 @@
 // };
 
 // export default connectDB;
-
+import dotenv from 'dotenv';
+dotenv.config();
 import mongoose from 'mongoose';
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.MONGODB_URI);
+
     console.log('MongoDB connected');
   } catch (error) {
+    console.log(process.env.MONGODB_URI)
     console.error('MongoDB error:', error.message);
     process.exit(1);
   }

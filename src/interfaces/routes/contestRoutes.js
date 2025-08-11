@@ -3,6 +3,7 @@ import {
   addContest,
   deleteContest,
   enableDisableContest,
+  getContestByContestFormat,
   getContestByType,
   getContestDetails,
   getContests,
@@ -19,4 +20,5 @@ router.delete("/deleteContest", deleteContest);
 router.patch("/disableContest", enableDisableContest);
 router.put("/editContestDetails", updateContest);
 router.get("/getContests", getContests);
+router.post("/getByContestFormat",getContestByContestFormat);
 export default router;

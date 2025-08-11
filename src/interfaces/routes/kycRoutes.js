@@ -10,7 +10,7 @@ import {
 import { verifyToken } from "../middlewares/verifyToken.js";
 import { upload } from "../../application/services/s3Upload.js";
 const router = express.Router();
-router.put("/kycUpdate", verifyToken, updateKycInfo);
+  router.put("/kycUpdate", verifyToken, updateKycInfo);
 router.put("/upload-document", verifyToken, uploadDocumentUrl);
 router.get("/kycPneding", getPendingKycUsers);
 router.post(

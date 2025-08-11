@@ -4,11 +4,17 @@ import { generateToken, verifyTokenFromRequest } from "../middlewares/auth.js";
 import { HttpResponse } from "../../utils/responses.js";
 import { sendResponse } from "../middlewares/responseHandler.js";
 import { uploadProfileImage } from "../../application/services/s3Upload.js";
+import WithdrawRequest from "../../infrastructure/db/Models/WithdrawRequest.js"; 
+import userModel from "../../infrastructure/db/Models/userModel.js";
+import Wallet from "../../infrastructure/db/Models/walletModel.js";
+import userEventModel from "../../infrastructure/db/Models/userEventModel.js";
+import { v4 as uuidv4 } from "uuid";
+import { WITHDRAWREQUESTRESULT } from "../../domain/constants/enums.js";
 export const addAdmin = async (req, res) => {
   try {
-    const { mailId, password, profileImage } = req.body;
+    const { mailId, password, profileImage,role } = req.body;
 
-    if (!mailId || !password) {
+    if (!mailId || !password || !role) {
       return sendResponse(
         res,
         HttpResponse.BAD_REQUEST.code,
@@ -28,6 +34,7 @@ export const addAdmin = async (req, res) => {
     const newAdmin = new adminModel({
       mailId,
       password:hashedPassword,
+      role,
       profileImage
     });
 
@@ -81,14 +88,14 @@ export const adminLoginWithPassword = async (req, res) => {
       );
     }
     admin.logs.push({
-      activity: "Admin logged in",
+      activity: `${admin.role} logged in`,
       timestamp: new Date(),
     });
     admin.lastLoginAt = new Date();
     await admin.save();
     const token = generateToken({
       adminId: admin.adminId,
-      role: "admin",
+      role:admin.role,
       mailId: admin.mailId,
     });
     return sendResponse(
@@ -120,9 +127,9 @@ export const getAdmin = async(req,res)=>{
         return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,{admin});
     }catch(error){
         console.log(error);
-        return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message,error)
+        return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,error.message)
     }
-}
+};
 export const changeAdminPassword = async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
@@ -209,4 +216,118 @@ export const uploadAdminProfile = async (req,res)=>{
         );
       }
     });
+};
+export const handleAdminWithdrawAction = async (req, res) => {
+  try {
+    const { withDrawRequestId, action } = req.body;
+    if (!withDrawRequestId || !action) {
+      return sendResponse(res, HttpResponse.ALL_FIELDS_REQUIRED.code,HttpResponse.ALL_FIELDS_REQUIRED.message);
+    }
+    const request = await WithdrawRequest.findOne({ withDrawRequestId });
+    if (!request || request.status !== WITHDRAWREQUESTRESULT.PENDING) {
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message_7);
+    }
+    const user = await userModel.findOne({ userId: request.userId });
+    if (!user) {
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message);
+    }
+    if (action === WITHDRAWREQUESTRESULT.DENIED) {
+      request.status = WITHDRAWREQUESTRESULT.DENIED;
+      request.updatedAt = new Date();
+      await request.save();
+      return sendResponse(res, HttpResponse.OK.code, HttpResponse.OK.message_6);
+    }
+    if (user.walletBalance < request.amount) {
+      return sendResponse(res,HttpResponse.LOW_BALANCE.code,HttpResponse.LOW_BALANCE.message);
+    }
+
+    const wallet = await Wallet.findOneAndUpdate(
+      { userId: user.userId },
+      {
+        $inc: { balance: -request.amount },
+        $push: {
+          transactions: {
+            transactionType: "withdraw",
+            amount: request.amount,
+            date: new Date(),
+            tnxId: uuidv4(),
+            status: "success",
+          },
+        },
+      },
+      { new: true }
+    );
+
+    user.walletBalance -= request.amount;
+    user.totalEarnings += request.amount;
+    await user.save();
+
+    request.status = WITHDRAWREQUESTRESULT.ACCEPTED;
+    request.updatedAt = new Date();
+    await request.save();
+
+    await userEventModel.create({
+      userId: user.userId,
+      type: "wallet_withdraw",
+      metadata: {
+        amount: request.amount,
+        tnxId: uuidv4(),
+        balanceAfterWithdraw: user.walletBalance,
+      },
+    });
+
+    return sendResponse(res, HttpResponse.CREATED.code,HttpResponse.CREATED.message_3, {
+      wallet,
+    });
+  } catch (error) {
+    console.error(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message,error.message);
+  }
+};
+export const getPendingWithdrawalRequestsByDate = async (req, res) => {
+  try {
+    const { fromDate, toDate } = req.query;
+
+    const from = fromDate ? new Date(fromDate) : new Date("1970-01-01");
+    const to = toDate
+      ? new Date(new Date(toDate).setHours(23, 59, 59, 999))
+      : new Date();
+
+    const requests = await WithdrawRequest.find({
+      status: "pending",
+      createdAt: { $gte: from, $lte: to },
+    }).sort({ createdAt: -1 });
+
+    const enriched = await Promise.all(
+      requests.map(async (req) => {
+        const user = await userModel.findOne({ userId: req.userId });
+        return {
+          withDrawRequestId: req.withDrawRequestId,
+          userId: req.userId,
+          name: user?.name || "Unknown",
+          username: user?.username || "",
+          mobileNumber: user?.mobileNumber || "",
+          amount: req.amount,
+          createdAt: req.createdAt,
+        };
+      })
+    );
+
+    return sendResponse(res, 200, "Pending withdrawal requests", enriched);
+  } catch (error) {
+    console.error("getPendingWithdrawalRequestsByDate error:", error);
+    return sendResponse(res, 500, "Failed to fetch pending withdrawal requests", error.message);
+  }
+};
+export const getPendingRequests = async(req,res)=>{
+  try{
+    const pendingList = await WithdrawRequest.find({status:'pending'});
+    if(!pendingList){
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,"No pending List found");
+    }
+    return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,{pendingList})
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message);
+  }
 }

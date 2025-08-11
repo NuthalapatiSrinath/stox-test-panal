@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 import users from "../../infrastructure/db/models/userModel.js";
-import { generateOtp, sendOtpEmail } from "../services/otpService.js";
+import { generateOtp, sendOTPEmail } from "../services/otpService.js";
 import { sendResponse } from "../middlewares/responseHandler.js";
 import { HttpResponse } from "../../utils/responses.js";
 import { generateToken, verifyTokenFromRequest } from "../middlewares/auth.js";
@@ -11,6 +11,9 @@ import otpQueue from "../../infrastructure/queues/emailOtpQueue.js";
 import userEventModel from "../../infrastructure/db/Models/userEventModel.js";
 import contestModel from "../../infrastructure/db/Models/contestModel.js";
 import { uploadProfileImage } from "../../application/services/s3Upload.js";
+import { handleDailyEngagement } from "../../application/services/engagement.js";
+import ExcelJS from "exceljs";
+import userModel from "../../infrastructure/db/models/userModel.js";
 
 export const registerUser = async (req, res) => {
   try {
@@ -67,6 +70,7 @@ export const registerUser = async (req, res) => {
       HttpResponse.INTERNAL_SERVER_ERROR.message,
       HttpResponse.INTERNAL_SERVER_ERROR.code
     );
+    console.log(error)
     return sendResponse(
       res,
       HttpResponse.INTERNAL_SERVER_ERROR.code,
@@ -135,6 +139,7 @@ export const loginWithPassword = async (req, res) => {
         ip: req.ip,
       },
     });
+    await handleDailyEngagement(user.userId);
     const token = generateToken({
       userId: user.userId,
       role: user.role,
@@ -166,37 +171,48 @@ export const loginWithPassword = async (req, res) => {
 export const sendOtp = async (req, res) => {
   try {
     const { emailId, type } = req.body;
+    console.log("🔍 Request to send OTP to:", emailId);
+
     const user = await users.findOne({ emailId });
+
     if (!user) {
+      console.warn("⚠️ User not found:", emailId);
       return sendResponse(
         res,
         HttpResponse.NOT_FOUND.code,
-        HttpResponse.NOT_FOUND.message
+        "User not found"
       );
     }
-    const otp = await generateOtp();
+
+    const otp = await generateOtp(); // e.g., returns "123456"
     const hashOtp = await bcrypt.hash(otp, 10);
-    console.log(otp);
+
+    console.log("✅ Generated OTP:", otp);
+
     user.otpCode = hashOtp;
     user.otpType = type;
-    user.otpExpiresAt = new Date(Date.now() + 3 * 60 * 1000);
+    user.otpExpiresAt = new Date(Date.now() + 3 * 60 * 1000); // 3 min
     user.otpLastSentAt = new Date();
     user.otpAttemptCount = 0;
-    await otpQueue.add({emailId, otp});
+
+    const job =  await sendOTPEmail(emailId, otp);
+
     await user.save();
-    loggerMonitor.log("info", HttpResponse.OK.code, HttpResponse.OK.message);
-    return sendResponse(res, HttpResponse.OK.code, HttpResponse.OK.message);
+    loggerMonitor.log("info", HttpResponse.OK.code, "OTP sent successfully");
+
+    return sendResponse(res, HttpResponse.OK.code, "OTP sent successfully");
+
   } catch (err) {
+    console.error("❌ sendOtp error:", err);
     loggerMonitor.error(
-      "info",
+      "error",
       HttpResponse.INTERNAL_SERVER_ERROR.code,
-      HttpResponse.INTERNAL_SERVER_ERROR.message
+      err.message || "Internal Server Error"
     );
-    console.log(err);
     return sendResponse(
       res,
       HttpResponse.INTERNAL_SERVER_ERROR.code,
-      HttpResponse.INTERNAL_SERVER_ERROR.message
+      "Something went wrong"
     );
   }
 };
@@ -360,24 +376,44 @@ export const getUserForAdmin = async(req,res)=>{
 }
 export const getAllUsersForAdminDashboard = async (req, res) => {
   try {
-    const Users = await users.find({}, "userId name username emailId mobileNumber joinedContestIds");
+    // Get page and limit from query, with default values
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const skip = (page - 1) * limit;
+
+    // Count total users for frontend pagination controls
+    const totalUsers = await users.countDocuments();
+
+    const Users = await users.find(
+      {},
+      "userId name username emailId mobileNumber joinedContestIds lastEngagementDate"
+    )
+    .skip(skip)
+    .limit(limit);
 
     const formatted = Users.map(user => ({
-      userId:user.userId,
+      userId: user.userId,
       username: user.username,
       emailId: user.emailId,
       mobileNumber: user.mobileNumber,
-      contestsPlayed: user.joinedContestIds.length
+      contestsPlayed: user.joinedContestIds.length,
+      lastEngagementDate: user.lastEngagementDate
     }));
 
     return sendResponse(
       res,
       HttpResponse.OK.code,
       HttpResponse.OK.message,
-      formatted
+      {
+        page,
+        limit,
+        totalUsers,
+        totalPages: Math.ceil(totalUsers / limit),
+        data: formatted
+      }
     );
   } catch (err) {
-
     return sendResponse(
       res,
       HttpResponse.INTERNAL_SERVER_ERROR.code,
@@ -385,31 +421,61 @@ export const getAllUsersForAdminDashboard = async (req, res) => {
     );
   }
 };
-export const getUsersForAdminUserManagement = async(req,res)=>{
-  try{
-     const Users = await users.find({}, "userId name username emailId mobileNumber createdAt walletBalance isActive");
-     const formatted = Users.map(user => ({
-      userId:user.userId,
-      name:user.name,
-      fullName:user.fullName,
+export const getUsersForAdminUserManagement = async (req, res) => {
+  try {
+    // Get pagination parameters from query string, default if missing
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 3;
+    const skip = (page - 1) * limit;
+
+    // Count total documents for pagination metadata
+    const totalUsers = await users.countDocuments();
+
+    // Fetch paginated users
+    const Users = await users.find(
+      {},
+      "userId name fullName username emailId mobileNumber createdAt walletBalance isActive"
+    )
+    .skip(skip)
+    .limit(limit);
+
+    // Format the response
+    const formatted = Users.map(user => ({
+      userId: user.userId,
+      name: user.name,
+      fullName: user.fullName,
       username: user.username,
       emailId: user.emailId,
       mobileNumber: user.mobileNumber,
-      createdAt:user.createdAt,
-      walletBalance:user.walletBalance,
-      isActive:user.isActive
-    }))
-      return sendResponse(
+      createdAt: user.createdAt,
+      walletBalance: user.walletBalance,
+      isActive: user.isActive
+    }));
+
+    // Send paginated response
+    return sendResponse(
       res,
       HttpResponse.OK.code,
       HttpResponse.OK.message,
-      formatted
+      {
+        page,
+        limit,
+        totalUsers,
+        totalPages: Math.ceil(totalUsers / limit),
+        data: formatted
+      }
     );
-  }catch(error){
+
+  } catch (error) {
     console.log(error);
-    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message,error)
+    return sendResponse(
+      res,
+      HttpResponse.INTERNAL_SERVER_ERROR.code,
+      HttpResponse.INTERNAL_SERVER_ERROR.message,
+      error
+    );
   }
-}
+};
 export const updateWalletAndActive = async(req,res)=>{
   try{
      const {userId,walletBalance,isActive}= req.body;
@@ -492,7 +558,7 @@ export const participationHistory = async(req,res)=>{
     return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message,error);
   }
 }
-export const uploadProfilePic = (req, res) => {
+export const uploadProfilePic =async (req, res) => {
   const uploadSingle = uploadProfileImage(process.env.S3_BUCKET_NAME).single("profilePicture");
 
   uploadSingle(req, res, async function (err) {
@@ -504,7 +570,7 @@ export const uploadProfilePic = (req, res) => {
       if (!userId) {
         return sendResponse(
           res,
-          HttpResponse.ALL_FIELDS_RUIRED.code,
+          HttpResponse.ALL_FIELDS_REQUIRED.code,
           HttpResponse.ALL_FIELDS_REQUIRED.message
         );
       }
@@ -524,4 +590,122 @@ export const uploadProfilePic = (req, res) => {
       );
     }
   });
+};
+export const highlyEngagedUsers = async(req,res)=>{
+  try{
+    
+  }catch(error){
+    console.log(error);
+    return sendResponse(res,htt)
+  }
+}
+export const getUsersByEngagementScore = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const users = await userModel.aggregate([
+      {
+        $addFields: {
+          numberOfJoinedContests: { $size: { $ifNull: ["$joinedContests", []] } },
+        },
+      },
+      {
+        $project: {
+          userId: 1,
+          name: 1,
+          username: 1,
+          mobileNumber: 1,
+          emailId: 1,
+          engagementScore: 1,
+          walletBalance: 1,
+          totalEarnings: 1,
+          numberOfJoinedContests: 1,
+        },
+      },
+      {
+        $sort: { engagementScore: -1 },
+      },
+      { $skip: skip },
+      { $limit: limit },
+    ]);
+
+    const totalUsers = await userModel.countDocuments();
+    const totalPages = Math.ceil(totalUsers / limit);
+
+    return sendResponse(res, 200, "Users sorted by engagement points", {
+      users,
+      currentPage: page,
+      totalPages,
+      limit,
+    });
+  } catch (error) {
+    console.error("Error fetching users by engagement score:", error.message);
+    return sendResponse(res, 500, "Error fetching engagement leaderboard", error.message);
+  }
+};
+export const downloadEngagementReport = async (req, res) => {
+  try {
+    const user = await users.aggregate([
+      {
+        $addFields: {
+          numberOfJoinedContests: { $size: { $ifNull: ["$joinedContests", []] } },
+        },
+      },
+      {
+        $project: {
+          name: 1,
+          username: 1,
+          mobileNumber: 1,
+          engagementScore: 1,
+          walletBalance: 1,
+          totalEarnings: 1,
+          numberOfJoinedContests: 1,
+          lastEngagementDate:1,
+        },
+      },
+      {
+        $sort: { engagementScore: -1 },
+      },
+    ]);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Engagement Report");
+
+    // Define headers
+    worksheet.columns = [
+      { header: "Name", key: "name", width: 20 },
+      { header: "Username", key: "username", width: 20 },
+      { header: "Mobile Number", key: "mobileNumber", width: 15 },
+      { header: "Engagement Score", key: "engagementScore", width: 20 },
+      { header: "Wallet Balance", key: "walletBalance", width: 15 },
+      { header: "Total Earnings", key: "totalEarnings", width: 15 },
+      { header: "No. of Contests", key: "numberOfJoinedContests", width: 18 },
+      { header:"Last Active Day",key:"lastEngagementDate",width:23}
+    ];
+
+    // Add data
+    user.forEach((user) => worksheet.addRow(user));
+
+    // Set headers to trigger file download
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=engagement_report.xlsx"
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error("Excel export failed:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to export engagement data",
+      error: error.message,
+    });
+  }
 };

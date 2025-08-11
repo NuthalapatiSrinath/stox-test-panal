@@ -70,3 +70,14 @@ export const OTPTYPE = {
   LOGIN:'login',
   RESET:'reset'
 }
+
+export const ADMINROLES = {
+  SUPER_ADMIN:'super_admin',
+  ADMIN:'admin'
+}
+
+export const WITHDRAWREQUESTRESULT={
+      PENDING:'pending',
+      DENIED:'denied',
+      ACCEPTED:'accepted'
+}

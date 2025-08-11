@@ -1,7 +1,7 @@
-import mongoose, { Model } from "mongoose";
+import mongoose from "mongoose";
 import {
   tpeOfTransaction,
-  transactionResult,
+  transactionResult
 } from "../../../domain/constants/enums.js";
 const { Schema } = mongoose;
 const walletSchema = new Schema(
@@ -16,10 +16,11 @@ const walletSchema = new Schema(
           enum: Object.values(tpeOfTransaction),
         },
         amount: { type: Number, required: true },
+        paymentMode:{type:String,default:"UPI"},
         date: { type: Date },
         status: { type: String, enum: Object.values(transactionResult) },
         tnxId: { type: String },
-      },
+      }
     ],
   },
   { timestamps: true }

@@ -11,7 +11,9 @@ import {
   filterActiveAndInactiveUsers,
   participationHistory,
   updateWalletAndActive,
-  uploadProfilePic
+  uploadProfilePic,
+  getUsersByEngagementScore,
+  downloadEngagementReport
 } from "../controllers/userController.js";
 import { userSignupValidator,userLoginValidator } from "../../utils/validators.js";
 import { handleValidation } from "../middlewares/handleValidation.js";
@@ -32,4 +34,7 @@ router.post("/getUser",getUserForAdmin);
 router.post("/getUserBasedOnIsActive",filterActiveAndInactiveUsers);
 router.post("/participationHistory",participationHistory);
 router.post("/uploadProfilePic",verifyToken,uploadProfilePic);
+router.get("/getUserByScore",getUsersByEngagementScore)
+router.get("/engagement-report/download", downloadEngagementReport);
+
 export default router;

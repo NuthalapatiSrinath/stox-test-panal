@@ -4,7 +4,7 @@ import { HttpResponse } from "../../utils/responses.js";
 import { normalizeTime } from "../middlewares/normalization.js";
 import redisClient from "../../infrastructure/redis/index.js";
 import contestModel from "../../infrastructure/db/Models/contestModel.js";
-
+import dayjs from 'dayjs';
 export const addContest = async (req, res) => {
   try {
     const contestData = req.body;
@@ -14,6 +14,9 @@ export const addContest = async (req, res) => {
         HttpResponse.ALL_FIELDS_REQUIRED.code,
         HttpResponse.ALL_FIELDS_REQUIRED.message
       );
+    }
+      if (contestData.dateTo) {
+      contestData.dateTo = dayjs(contestData.dateTo, 'DD-MM-YYYY').toDate();
     }
     contestData.contestFormat = contestData.noOfSlots===2?"Head to Head Contest":"Multiple Member Contest";
     console.log(contestData);
@@ -274,5 +277,21 @@ export const getContests = async(req,res)=>{
   }catch(error){
     console.log(error);
     return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message);
+  }
+}
+export const getContestByContestFormat = async(req,res)=>{
+  try{
+    const {contestFormat}= req.body;
+    if(!contestFormat){
+      return sendResponse(res,HttpResponse.ALL_FIELDS_REQUIRED.code,HttpResponse.ALL_FIELDS_REQUIRED.message);
+    }
+    const contest = await contestModel.find({contestFormat});
+    if(!contest){
+      return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message_2);
+    }
+    return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message,{contest})
+  }catch(error){
+    console.log(error);
+    sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message);
   }
 }

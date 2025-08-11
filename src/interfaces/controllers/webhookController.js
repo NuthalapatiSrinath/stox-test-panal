@@ -6,61 +6,52 @@ import { HttpResponse } from "../../utils/responses.js";
 
 export const handleCashfreeWebhook = async (req, res) => {
   try {
-    const event = req.body?.event;
+    const { order_id, order_amount, order_status, payment_id } = req.body;
 
-    if (event === "PAYMENT_SUCCESS_WEBHOOK") {
-      const data = req.body.data;
-      const orderId = data.order.order_id;
-      const amount = data.order.order_amount;
-      const userId = data.customer_details.customer_id;
-
-      const user = await userModel.findOne({ userId });
-      if (!user){
-        return sendResponse(res,HttpResponse.NOT_FOUND.code,HttpResponse.NOT_FOUND.message)
-      }
-      const existingTransaction = await Wallet.findOne({
-        userId,
-        "transactions.tnxId": orderId,
-      });
-      if (existingTransaction) {
-        return res.status(200).send("Duplicate webhook: already processed");
-      }
-      const topUPMoney = await Wallet.findOneAndUpdate(
-        { userId },
-        {
-          $inc: { balance: amount },
-          $push: {
-            transactions: {
-              transactionType: "top-up",
-              amount,
-              date: new Date(),
-              tnxId: orderId,
-              status: "success",
-            },
-          },
-          $setOnInsert: { name: user.name },
-        },
-        { new: true, upsert: true }
-      );
-
-      user.walletBalance += amount;
-      user.totalTopups += 1;
-      await user.save();
-
-      await userEventModel.create({
-        userId,
-        type: "wallet_topup",
-        metadata: {
-          amount,
-          tnxId: orderId,
-          balanceAfterTopup: user.walletBalance,
-        },
-      });
-      return sendResponse(res,HttpResponse.OK.code,HttpResponse.OK.message_4,topUPMoney)
+    if (order_status !== "PAID") {
+      return res.status(200).send("Ignored");
     }
-    return sendResponse(res,HttpResponse.BAD_GATEWAY.code,HttpResponse.BAD_GATEWAY.message);
+
+    // Find user by order_id mapping (e.g., store orderId when initiating top-up)
+    const paymentRecord = await PendingTopUp.findOne({ orderId: order_id });
+
+    if (!paymentRecord || paymentRecord.status === "completed") {
+      return res.status(200).send("Already processed");
+    }
+
+    const user = await userModel.findOne({ userId: paymentRecord.userId });
+
+    // Update wallet
+    await Wallet.findOneAndUpdate(
+      { userId: user.userId },
+      {
+        $inc: { balance: +order_amount },
+        $push: {
+          transactions: {
+            transactionType: "top-up",
+            amount: order_amount,
+            date: new Date(),
+            tnxId: payment_id,
+            status: "success",
+          },
+        },
+        $setOnInsert: { name: user.name },
+      },
+      { new: true, upsert: true }
+    );
+
+    user.walletBalance += order_amount;
+    user.totalTopups += order_amount;
+    await user.save();
+
+    // Mark top-up as completed
+    paymentRecord.status = "completed";
+    await paymentRecord.save();
+
+    return res.status(200).send("Payment processed");
   } catch (err) {
-    console.log(err)
-    return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message);
+    console.error(err);
+    return res.status(500).send("Webhook error");
   }
 };
+

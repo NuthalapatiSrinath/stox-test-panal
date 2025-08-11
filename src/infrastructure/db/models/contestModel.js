@@ -45,7 +45,7 @@ const contestSchema = new mongoose.Schema(
     untilAdminEnds: { type: Boolean, default: false },
     timeFrom: { type: String, required: true },
     timeTo: { type: String },
-    spotsLeft: { type: Number, required: true },
+    spotsLeft: { type: Number, required: true},
     winningAmounts: [winningSchema],
     disable: { type: Boolean, default: false },
   },

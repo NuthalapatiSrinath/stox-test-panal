@@ -21,16 +21,7 @@ export const updateKycInfo = async (req, res) => {
     );
   }
   try {
-    const { userId } = req.body;
-    if (req.user.userId !== userId) {
-      return sendResponse(
-        res,
-        HttpResponse.UNAUTHORIZED.code,
-        HttpResponse.UNAUTHORIZED.message_2,
-        null,
-        false
-      );
-    }
+    const userId = req.user.userId; 
     const { fullName, dateOfBirth, gender, documentType, documentNumber } =
       req.body;
     const user = await User.findOne({ userId });
@@ -43,24 +34,22 @@ export const updateKycInfo = async (req, res) => {
         false
       );
     }
-    if (
-      user.fullName &&
-      user.dateOfBirth &&
-      user.gender &&
-      user.documentType &&
-      user.documentNumber &&
-      user.kycVerifiedAt
-    ) {
-      return sendResponse(
-        res,
-        HttpResponse.ALREADY_EXISTS.code,
-        HttpResponse.ALREADY_EXISTS.message
-      );
-    }
+    // if (
+    //   user.fullName &&
+    //   user.dateOfBirth &&
+    //   user.gender &&
+    //   user.documentType &&
+    //   user.documentNumber &&
+    //   user.kycVerifiedAt
+    // ) {
+    //   return sendResponse(
+    //     res,
+    //     HttpResponse.ALREADY_EXISTS.code,
+    //     HttpResponse.ALREADY_EXISTS.message
+    //   );
+    // }
     const existingPan = await User.findOne({
-      documentNumber,
-      userId: { $ne: userId },
-    });
+      documentNumber    });
 
     if (existingPan) {
       return sendResponse(
@@ -112,39 +101,32 @@ export const updateKycInfo = async (req, res) => {
   }
 };
 export const uploadDocumentUrl = (req, res) => {
-  const uploadSingle = upload(process.env.S3_BUCKET_NAME).single(
-    "documentImageUrl"
-  );
+  const uploadSingle = upload(process.env.S3_BUCKET_NAME).single("documentImageUrl");
+
   uploadSingle(req, res, async function (err) {
     if (err) {
       return res.status(400).json({ message: err.message });
     }
+
     try {
-      const { userId } = req.body;
-      console.log(req.file);
-      if (req.user.userId !== userId) {
-        return sendResponse(
-          res,
-          HttpResponse.UNAUTHORIZED.code,
-          HttpResponse.UNAUTHORIZED.message_2,
-          null,
-          false
-        );
-      }
-         if (!req.file) {
+      const userId = req.user?.userId; 
+
+      if (!req.file) {
         return sendResponse(
           res,
           HttpResponse.FORBIDDEN.code,
           HttpResponse.FORBIDDEN.message
         );
       }
+
       const documentImageUrl = req.file.location;
-      console.log(documentImageUrl)
+
       const updatedKyc = await User.findOneAndUpdate(
         { userId },
-        { documentImageUrl: documentImageUrl },
+        { documentImageUrl },
         { new: true }
       );
+
       if (!updatedKyc) {
         return sendResponse(
           res,
@@ -152,12 +134,14 @@ export const uploadDocumentUrl = (req, res) => {
           HttpResponse.NOT_FOUND.message
         );
       }
+
       return sendResponse(
         res,
         HttpResponse.OK.code,
         HttpResponse.OK.message,
         updatedKyc
       );
+
     } catch (dbError) {
       console.error(dbError);
       return sendResponse(
@@ -234,7 +218,7 @@ export const updateKycStatus = async(req,res)=>{
     console.log(error);
     return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message)
   }
-}
+};
 export const getKycDetails = async(req,res)=>{
   try{
     const getAllKycDetails = await User.find({},"userId fullName username mobileNumber documentNumber dateOfBirth documentImageUrl kycStatus kycRejectionReason");
@@ -257,4 +241,4 @@ export const getKycDetails = async(req,res)=>{
     console.log(error);
     return sendResponse(res,HttpResponse.INTERNAL_SERVER_ERROR.code,HttpResponse.INTERNAL_SERVER_ERROR.message);
   }
-}
+};

@@ -7,4 +7,4 @@ router.post("/getUserTransaction",verifyToken,getTransactionDetails)
 router.post("/topUpWallet",verifyToken,topUpWallet);
 router.post("/withdraw",verifyToken,withdrawWallet); 
 router.get("/getAllTransactions",getAllTransactions);
-export default router;
+export default router; 

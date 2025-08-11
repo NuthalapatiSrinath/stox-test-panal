@@ -1,6 +1,7 @@
+// middlewares/verifyToken.js
 import jwt from "jsonwebtoken";
-import { HttpResponse } from "../../utils/responses.js";
 import { sendResponse } from "./responseHandler.js";
+import { HttpResponse } from "../../utils/responses.js";
 
 export const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -18,9 +19,12 @@ export const verifyToken = (req, res, next) => {
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET); 
-    req.user = decoded;
-    req.admin = decoded;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Pass all decoded fields so you keep role
+    req.user = decoded; 
+    req.admin = decoded; // Optional, if you want admin convenience
+
     next();
   } catch (err) {
     return sendResponse(
@@ -32,3 +36,4 @@ export const verifyToken = (req, res, next) => {
     );
   }
 };
+

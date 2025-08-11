@@ -5,6 +5,8 @@ import { HttpResponse } from "../../utils/responses.js";
 import Contest from "../../infrastructure/db/Models/contestModel.js";
 import { v4 as uuidv4 } from "uuid";
 import userEventModel from "../../infrastructure/db/Models/userEventModel.js";
+import { updateContestEngagementPoints } from "../../application/services/engagement.js";
+
 export const joinContestWithTeam = async (req, res) => {
   try {
     const { userId, contestId, selectedStocks } = req.body;
@@ -79,7 +81,7 @@ export const joinContestWithTeam = async (req, res) => {
         stocksSelected: selectedStocks.length,
       },
     });
-
+    await updateContestEngagementPoints(userId);
     return sendResponse(
       res,
       HttpResponse.CREATED.code,

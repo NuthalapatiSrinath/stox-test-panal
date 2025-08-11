@@ -52,8 +52,10 @@ const UserSchema = new Schema(
     lastLoginIP: { type: String },
     loginMethod: { type: String, enum: ["email", "phone", "google", "apple"] },
     loginAttempts: { type: Number, default: 0 },
-    isBlocked: { type: Boolean, default: false },
+    isBlocked: { type: Boolean, default : false },
     blockReason: { type: String },
+    lastEngagementDate: {type:Date,default:null}, // when last +10 was given
+   engagementScore: {type:Number,default:0},
 
     // Notification & Preferences
     notificationPrefs: {
