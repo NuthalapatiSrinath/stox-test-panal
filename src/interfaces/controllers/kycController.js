@@ -1,5 +1,5 @@
 import { validationResult } from "express-validator";
-import User from "../../infrastructure/db/models/userModel.js";
+import User from "../../infrastructure/db/Models/userModel.js";
 import { sendResponse } from "../middlewares/responseHandler.js";
 import { HttpResponse } from "../../utils/responses.js";
 import { loggerMonitor } from "../../utils/logger.js";

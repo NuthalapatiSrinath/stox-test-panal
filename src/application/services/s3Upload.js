@@ -32,7 +32,7 @@ export const upload = (bucketName) =>
     storage: multerS3({
       s3,
       bucket: bucketName,
-      metadata: (req, file, cb) => {
+      metadata: (req, file, c ) => {
         cb(null, { fieldName: file.fieldname });
       },
       key: (req, file, cb) => {

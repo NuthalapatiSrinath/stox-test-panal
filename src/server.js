@@ -11,8 +11,7 @@ import db from "./application/services/fireBase.js";
 import cron from "node-cron";
 // import { runMissedJoinJob } from "./infrastructure/queues/jobs/notifyMissedJoinsJob.js";
 
-dotenv.config();
-
+dotenv.config(); 
 const app = express();
 const server = http.createServer(app);    
 const io = new Server(server, {

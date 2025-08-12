@@ -54,4 +54,3 @@ export const handleCashfreeWebhook = async (req, res) => {
     return res.status(500).send("Webhook error");
   }
 };
-

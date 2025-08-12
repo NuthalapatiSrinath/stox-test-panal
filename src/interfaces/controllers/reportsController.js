@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { sendResponse } from "../middlewares/responseHandler.js";
-import userModel from "../../infrastructure/db/models/userModel.js";
+import userModel from "../../infrastructure/db/Models/userModel.js";
 import contestModel from "../../infrastructure/db/Models/contestModel.js";
 import teamModel from "../../infrastructure/db/Models/teamModel.js";
 import Wallet from "../../infrastructure/db/Models/walletModel.js";

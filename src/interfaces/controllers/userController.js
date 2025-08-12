@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
-import users from "../../infrastructure/db/models/userModel.js";
+import users from "../../infrastructure/db/Models/userModel.js";
 import { generateOtp, sendOTPEmail } from "../services/otpService.js";
 import { sendResponse } from "../middlewares/responseHandler.js";
 import { HttpResponse } from "../../utils/responses.js";
@@ -13,7 +13,6 @@ import contestModel from "../../infrastructure/db/Models/contestModel.js";
 import { uploadProfileImage } from "../../application/services/s3Upload.js";
 import { handleDailyEngagement } from "../../application/services/engagement.js";
 import ExcelJS from "exceljs";
-import userModel from "../../infrastructure/db/models/userModel.js";
 
 export const registerUser = async (req, res) => {
   try {
@@ -605,7 +604,7 @@ export const getUsersByEngagementScore = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const users = await userModel.aggregate([
+    const user = await users.aggregate([
       {
         $addFields: {
           numberOfJoinedContests: { $size: { $ifNull: ["$joinedContests", []] } },
@@ -631,11 +630,11 @@ export const getUsersByEngagementScore = async (req, res) => {
       { $limit: limit },
     ]);
 
-    const totalUsers = await userModel.countDocuments();
+    const totalUsers = await users.countDocuments();
     const totalPages = Math.ceil(totalUsers / limit);
 
     return sendResponse(res, 200, "Users sorted by engagement points", {
-      users,
+      user,
       currentPage: page,
       totalPages,
       limit,

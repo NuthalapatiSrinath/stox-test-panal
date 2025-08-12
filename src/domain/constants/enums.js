@@ -21,13 +21,18 @@ export const genderOptions = {
   FEMALE: 'female',
   OTHER: 'other',
 };
+// export const CONTESTTYPE ={
+//   BUY_TODAY_SELL_TOMORROW: 'Buy Today Sell Tomorrow',
+//   INTRA_DAY: 'Intra Day',
+//   SEVEN_DAY_CLASH: '7-Day clash',
+//   ONE_SHOT_GLORY:'One Shot Glory', 
+// }
 export const CONTESTTYPE ={
-  BUY_TODAY_SELL_TOMORROW: 'Buy Today Sell Tomorrow',
-  INTRA_DAY: 'Intra Day',
-  SEVEN_DAY_CLASH: '7-Day clash',
-  ONE_SHOT_GLORY:'One Shot Glory', 
+  BUY_TODAY_SELL_TOMORROW: 'daily',
+  INTRA_DAY: 'hourly',
+  SEVEN_DAY_CLASH: 'weekly',
+  ONE_SHOT_GLORY:'monthly',
 }
-
 export const HOURTYPE={
   ONE_HOUR:'1hr',
   TWO_HOURS:'2hrs',
