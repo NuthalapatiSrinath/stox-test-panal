@@ -5,10 +5,10 @@ import { onlySuperAdmin } from "../middlewares/checkAdminRole.js";
 
 const router = express.Router();
 
-router.post("/createAdmin",addAdmin);
+router.post("/createAdmin",verifyToken,onlySuperAdmin,addAdmin);
 router.post("/adminLogin",adminLoginWithPassword);
 router.get("/getAdmin",getAdmin);
-router.post('/change-password', verifyToken,onlySuperAdmin, changeAdminPassword);
+router.post('/change-password',changeAdminPassword);
 router.post('/uploadProfice-picture',uploadAdminProfile);
 router.post('/handleWithdrawRequests',handleAdminWithdrawAction);
 router.post('/getRequestsByDate',getPendingWithdrawalRequestsByDate);

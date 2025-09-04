@@ -28,7 +28,7 @@ const UserSchema = new Schema(
       default: "pending",
     },
     walletBalance: { type: Number, default: 0 },
-    profilePicture:{type:String,default:"https://cdn.sologo.ai/temp24h/logo/403b5250-85a5-446b-a47b-f3c9f6bb34ca.jpeg"},
+    profilePicture:{type:String,default:"https://extract-text-from-document.s3.ap-south-1.amazonaws.com/adminprofilepic/1755001256608-WhatsApp%20Image%202025-08-12%20at%205.50.22%20PM.jpeg"},
     
     // OTP Verification
     otpCode: { type: String },

@@ -3,7 +3,7 @@ import adminModel from "../../infrastructure/db/Models/adminModel.js";
 import { generateToken, verifyTokenFromRequest } from "../middlewares/auth.js";
 import { HttpResponse } from "../../utils/responses.js";
 import { sendResponse } from "../middlewares/responseHandler.js";
-import { uploadProfileImage } from "../../application/services/s3Upload.js";
+import { uploadAdminProfileImage } from "../../application/services/s3Upload.js";
 import WithdrawRequest from "../../infrastructure/db/Models/WithdrawRequest.js"; 
 import userModel from "../../infrastructure/db/Models/userModel.js";
 import Wallet from "../../infrastructure/db/Models/walletModel.js";
@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import { WITHDRAWREQUESTRESULT } from "../../domain/constants/enums.js";
 export const addAdmin = async (req, res) => {
   try {
-    const { mailId, password, profileImage,role } = req.body;
+    const { mailId, password, profileImage,role,mobileNumber } = req.body;
 
     if (!mailId || !password || !role) {
       return sendResponse(
@@ -35,7 +35,8 @@ export const addAdmin = async (req, res) => {
       mailId,
       password:hashedPassword,
       role,
-      profileImage
+      profileImage,
+      mobileNumber
     });
 
     await newAdmin.save();
@@ -186,7 +187,7 @@ export const changeAdminPassword = async (req, res) => {
   }
 };
 export const uploadAdminProfile = async (req,res)=>{
-  const uploadSingle = uploadProfileImage(process.env.S3_BUCKET_NAME).single("profilePicture");
+  const uploadSingle = uploadAdminProfileImage(process.env.S3_BUCKET_NAME).single("profilePicture");
     uploadSingle(req, res, async function (err) {
       if (err) {
         return res.status(400).json({ message: err.message });
@@ -306,6 +307,7 @@ export const getPendingWithdrawalRequestsByDate = async (req, res) => {
           userId: req.userId,
           name: user?.name || "Unknown",
           username: user?.username || "",
+          emailId:user?.emailId,
           mobileNumber: user?.mobileNumber || "",
           amount: req.amount,
           createdAt: req.createdAt,

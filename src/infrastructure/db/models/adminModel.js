@@ -22,6 +22,10 @@ const adminSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  mobileNumber:{
+    type:String,
+    required:true
+  },
   role:{
     type:String,
     required:true,
@@ -29,7 +33,7 @@ const adminSchema = new mongoose.Schema({
   },
   profilePicture: {
     type: String,
-    default: ''
+    default: 'https://extract-text-from-document.s3.ap-south-1.amazonaws.com/adminprofilepic/1755001256608-WhatsApp%20Image%202025-08-12%20at%205.50.22%20PM.jpeg'
   },
   logs: [logSchema]
 });
